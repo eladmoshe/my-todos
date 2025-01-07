@@ -5,7 +5,11 @@ export default {
     "./public/index.html"
   ],
   theme: {
-    extend: {},
+    extend: {
+      borderRadius: {
+        'sm-2': '2px',
+      },
+    },
   },
   plugins: [],
 }

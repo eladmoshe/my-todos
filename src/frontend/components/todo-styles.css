@@ -56,3 +56,16 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-300 bg-opacity-80;
 }
+
+/* Add this to your existing CSS */
+.add-todo-button {
+  @apply w-4 h-4 bg-blue-500 text-white flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors duration-200 rounded-sm-2 relative;
+}
+
+.add-todo-button::before {
+  content: '+';
+  @apply absolute text-sm font-bold leading-none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

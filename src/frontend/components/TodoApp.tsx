@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './todo-styles.css';
 import supabase, { signIn, signUp } from '../../supabaseClient';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
@@ -23,6 +23,8 @@ const TodoApp: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newTodoSectionId, setNewTodoSectionId] = useState<number | null>(null);
+  const newTodoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -240,6 +242,33 @@ const TodoApp: React.FC = () => {
     if (error) console.error('Error signing out:', error);
   };
 
+  const addEmptyTodo = (sectionId: number) => {
+    setNewTodoSectionId(sectionId);
+    setSections(sections.map(section =>
+      section.id === sectionId
+        ? { ...section, todos: [...section.todos, { id: Date.now(), text: '' }] }
+        : section
+    ));
+    setTimeout(() => {
+      if (newTodoInputRef.current) {
+        newTodoInputRef.current.focus();
+      }
+    }, 0);
+  };
+
+  const handleNewTodoBlur = (sectionId: number, todoId: number, text: string) => {
+    if (text.trim() === '') {
+      setSections(sections.map(section =>
+        section.id === sectionId
+          ? { ...section, todos: section.todos.filter(todo => todo.id !== todoId) }
+          : section
+      ));
+    } else {
+      finishEditingTodo(sectionId, todoId, text);
+    }
+    setNewTodoSectionId(null);
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
@@ -311,7 +340,7 @@ const TodoApp: React.FC = () => {
             </button>
 
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="space-y-10 relative notebook-content">
+              <div className="space-y-4">
                 {sections.map((section) => (
                   <div
                     key={section.id}
@@ -361,7 +390,7 @@ const TodoApp: React.FC = () => {
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`space-y-0 ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                          className={`${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
                         >
                           {section.todos.map((todo, index) => (
                             <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
@@ -370,7 +399,7 @@ const TodoApp: React.FC = () => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`flex items-center notebook-line
+                                  className={`notebook-line flex items-center
                                              hover:bg-blue-50 transition-colors duration-200
                                              ${snapshot.isDragging ? 'bg-blue-100 shadow-md' : ''}`}
                                 >
@@ -379,8 +408,9 @@ const TodoApp: React.FC = () => {
                                     onChange={() => checkTodo(section.id, todo.id)}
                                     className="todo-checkbox"
                                   />
-                                  {editingTodoId === todo.id ? (
+                                  {(editingTodoId === todo.id || newTodoSectionId === section.id && todo.text === '') ? (
                                     <input
+                                      ref={newTodoSectionId === section.id ? newTodoInputRef : null}
                                       type="text"
                                       value={todo.text}
                                       onChange={(e) => {
@@ -396,10 +426,10 @@ const TodoApp: React.FC = () => {
                                             : s
                                         ));
                                       }}
-                                      onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
+                                      onBlur={() => handleNewTodoBlur(section.id, todo.id, todo.text)}
                                       onKeyPress={(e) => {
                                         if (e.key === 'Enter') {
-                                          finishEditingTodo(section.id, todo.id, todo.text);
+                                          handleNewTodoBlur(section.id, todo.id, todo.text);
                                         }
                                       }}
                                       className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
@@ -422,33 +452,14 @@ const TodoApp: React.FC = () => {
                       )}
                     </Droppable>
 
-                    {/* Add Todo Form */}
-                    <form 
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const input = e.currentTarget.elements.namedItem('todo') as HTMLInputElement;
-                        if (input.value.trim()) {
-                          addTodo(section.id, input.value);
-                          input.value = '';
-                        }
-                      }}
-                      className="mt-4 flex space-x-2 notebook-line"
-                    >
-                      <input
-                        type="text"
-                        name="todo"
-                        placeholder="Add new todo"
-                        className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                    {/* Add Todo Button */}
+                    <div className="notebook-line flex items-center">
+                      <div
+                        className="add-todo-button mr-3"
+                        onClick={() => addEmptyTodo(section.id)}
                       />
-                      <button 
-                        type="submit"
-                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
-                                 transition-colors duration-200 shadow-sm hover:shadow
-                                 text-sm font-medium tracking-wide"
-                      >
-                        Add
-                      </button>
-                    </form>
+                      <div className="flex-1" /> {/* Spacer to push the button to the left */}
+                    </div>
                   </div>
                 ))}
               </div>
