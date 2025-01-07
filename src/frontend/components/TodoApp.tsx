@@ -1,7 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './todo-styles.css';
-import supabase, { signIn, signUp } from '../../supabaseClient';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import React, { useState, useEffect, useRef } from "react";
+import "./todo-styles.css";
+import supabase, { signIn, signUp } from "../../supabaseClient";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "react-beautiful-dnd";
 
 interface Todo {
   id: number;
@@ -19,18 +24,19 @@ const TodoApp: React.FC = () => {
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newTodoSectionId, setNewTodoSectionId] = useState<number | null>(null);
+  const [newTodoText, setNewTodoText] = useState<string>("");
   const newTodoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-    
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -52,36 +58,38 @@ const TodoApp: React.FC = () => {
 
   const fetchSections = async () => {
     const { data, error } = await supabase
-      .from('sections')
-      .select('*')
-      .order('id');
+      .from("sections")
+      .select("*")
+      .order("id");
     if (error) {
-      console.error('Error fetching sections:', error);
+      console.error("Error fetching sections:", error);
     } else {
-      const sectionsWithTodos = await Promise.all(data.map(async (section) => {
-        const { data: todos, error: todosError } = await supabase
-          .from('todos')
-          .select('*')
-          .eq('section_id', section.id)
-          .order('id');
-        if (todosError) {
-          console.error('Error fetching todos:', todosError);
-          return { ...section, todos: [] };
-        }
-        return { ...section, todos };
-      }));
+      const sectionsWithTodos = await Promise.all(
+        data.map(async (section) => {
+          const { data: todos, error: todosError } = await supabase
+            .from("todos")
+            .select("*")
+            .eq("section_id", section.id)
+            .order("id");
+          if (todosError) {
+            console.error("Error fetching todos:", todosError);
+            return { ...section, todos: [] };
+          }
+          return { ...section, todos };
+        })
+      );
       setSections(sectionsWithTodos);
     }
   };
 
   const addSection = async () => {
     const { data, error } = await supabase
-      .from('sections')
-      .insert({ title: 'New Section' })
+      .from("sections")
+      .insert({ title: "New Section" })
       .select()
       .single();
     if (error) {
-      console.error('Error adding section:', error);
+      console.error("Error adding section:", error);
     } else {
       setSections([...sections, { ...data, todos: [] }]);
     }
@@ -89,46 +97,50 @@ const TodoApp: React.FC = () => {
 
   const deleteSection = async (sectionId: number) => {
     const { error } = await supabase
-      .from('sections')
+      .from("sections")
       .delete()
-      .eq('id', sectionId);
+      .eq("id", sectionId);
     if (error) {
-      console.error('Error deleting section:', error);
+      console.error("Error deleting section:", error);
     } else {
-      setSections(sections.filter(section => section.id !== sectionId));
+      setSections(sections.filter((section) => section.id !== sectionId));
     }
   };
 
   const addTodo = async (sectionId: number, todoText: string) => {
     const { data, error } = await supabase
-      .from('todos')
+      .from("todos")
       .insert({ text: todoText, section_id: sectionId })
       .select()
       .single();
     if (error) {
-      console.error('Error adding todo:', error);
+      console.error("Error adding todo:", error);
     } else {
-      setSections(sections.map(section =>
-        section.id === sectionId
-          ? { ...section, todos: [...section.todos, data] }
-          : section
-      ));
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? { ...section, todos: [...section.todos, data] }
+            : section
+        )
+      );
     }
   };
 
   const checkTodo = async (sectionId: number, todoId: number) => {
-    const { error } = await supabase
-      .from('todos')
-      .delete()
-      .eq('id', todoId);
+    const { error } = await supabase.from("todos").delete().eq("id", todoId);
     if (error) {
-      console.error('Error deleting todo:', error);
+      console.error("Error deleting todo:", error);
     } else {
-      setSections(sections.map(section =>
-        section.id === sectionId
-          ? { ...section, todos: section.todos.filter(todo => todo.id !== todoId) }
-          : section
-      ));
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                todos: section.todos.filter((todo) => todo.id !== todoId),
+              }
+            : section
+        )
+      );
     }
   };
 
@@ -148,8 +160,12 @@ const TodoApp: React.FC = () => {
       return;
     }
 
-    const sourceSection = sections.find(s => s.id === parseInt(source.droppableId, 10));
-    const destSection = sections.find(s => s.id === parseInt(destination.droppableId, 10));
+    const sourceSection = sections.find(
+      (s) => s.id === parseInt(source.droppableId, 10)
+    );
+    const destSection = sections.find(
+      (s) => s.id === parseInt(destination.droppableId, 10)
+    );
 
     if (!sourceSection || !destSection) {
       return;
@@ -163,12 +179,12 @@ const TodoApp: React.FC = () => {
 
     // Update the database
     const { error } = await supabase
-      .from('todos')
+      .from("todos")
       .update({ section_id: parseInt(destination.droppableId, 10) })
-      .eq('id', reorderedTodo.id);
+      .eq("id", reorderedTodo.id);
 
     if (error) {
-      console.error('Error updating todo:', error);
+      console.error("Error updating todo:", error);
     }
   };
 
@@ -178,16 +194,18 @@ const TodoApp: React.FC = () => {
 
   const finishEditingSection = async (sectionId: number, newTitle: string) => {
     const { error } = await supabase
-      .from('sections')
+      .from("sections")
       .update({ title: newTitle })
-      .eq('id', sectionId);
+      .eq("id", sectionId);
 
     if (error) {
-      console.error('Error updating section title:', error);
+      console.error("Error updating section title:", error);
     } else {
-      setSections(sections.map(section =>
-        section.id === sectionId ? { ...section, title: newTitle } : section
-      ));
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId ? { ...section, title: newTitle } : section
+        )
+      );
     }
     setEditingSectionId(null);
   };
@@ -196,25 +214,31 @@ const TodoApp: React.FC = () => {
     setEditingTodoId(todoId);
   };
 
-  const finishEditingTodo = async (sectionId: number, todoId: number, newText: string) => {
+  const finishEditingTodo = async (
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
     const { error } = await supabase
-      .from('todos')
+      .from("todos")
       .update({ text: newText })
-      .eq('id', todoId);
+      .eq("id", todoId);
 
     if (error) {
-      console.error('Error updating todo:', error);
+      console.error("Error updating todo:", error);
     } else {
-      setSections(sections.map(section =>
-        section.id === sectionId
-          ? {
-              ...section,
-              todos: section.todos.map(todo =>
-                todo.id === todoId ? { ...todo, text: newText } : todo
-              )
-            }
-          : section
-      ));
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                todos: section.todos.map((todo) =>
+                  todo.id === todoId ? { ...todo, text: newText } : todo
+                ),
+              }
+            : section
+        )
+      );
     }
     setEditingTodoId(null);
   };
@@ -224,14 +248,16 @@ const TodoApp: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user, error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
+      const { user, error } = isSignUp
+        ? await signUp(email, password)
+        : await signIn(email, password);
       if (error) {
         setError(error.message);
       } else {
-        console.log(`${isSignUp ? 'Signed up' : 'Signed in'}:`, user);
+        console.log(`${isSignUp ? "Signed up" : "Signed in"}:`, user);
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -239,16 +265,12 @@ const TodoApp: React.FC = () => {
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error signing out:', error);
+    if (error) console.error("Error signing out:", error);
   };
 
   const addEmptyTodo = (sectionId: number) => {
     setNewTodoSectionId(sectionId);
-    setSections(sections.map(section =>
-      section.id === sectionId
-        ? { ...section, todos: [...section.todos, { id: Date.now(), text: '' }] }
-        : section
-    ));
+    setNewTodoText("");
     setTimeout(() => {
       if (newTodoInputRef.current) {
         newTodoInputRef.current.focus();
@@ -256,24 +278,53 @@ const TodoApp: React.FC = () => {
     }, 0);
   };
 
-  const handleNewTodoBlur = (sectionId: number, todoId: number, text: string) => {
-    if (text.trim() === '') {
-      setSections(sections.map(section =>
-        section.id === sectionId
-          ? { ...section, todos: section.todos.filter(todo => todo.id !== todoId) }
-          : section
-      ));
-    } else {
-      finishEditingTodo(sectionId, todoId, text);
+  const handleNewTodoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewTodoText(e.target.value);
+  };
+
+  const handleNewTodoBlur = async (sectionId: number) => {
+    if (newTodoText.trim() !== "") {
+      await addTodo(sectionId, newTodoText);
     }
     setNewTodoSectionId(null);
+    setNewTodoText("");
+  };
+
+  const handleNewTodoKeyPress = async (
+    e: React.KeyboardEvent,
+    sectionId: number
+  ) => {
+    if (e.key === "Enter") {
+      await handleNewTodoBlur(sectionId);
+    }
+  };
+
+  const handleExistingTodoBlur = async (
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
+    await finishEditingTodo(sectionId, todoId, newText);
+  };
+
+  const handleExistingTodoKeyPress = async (
+    e: React.KeyboardEvent,
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
+    if (e.key === "Enter") {
+      await handleExistingTodoBlur(sectionId, todoId, newText);
+    }
   };
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
-          <h2 className="text-2xl font-serif text-gray-800 mb-6">Sign Up or Sign In</h2>
+          <h2 className="text-2xl font-serif text-gray-800 mb-6">
+            Sign Up or Sign In
+          </h2>
           <form onSubmit={(e) => handleAuth(e, true)} className="space-y-4">
             <input
               type="email"
@@ -292,8 +343,21 @@ const TodoApp: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="flex space-x-4">
-              <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Sign Up</button>
-              <button type="button" onClick={(e) => handleAuth(e, false)} disabled={isLoading} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Sign In</button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleAuth(e, false)}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                Sign In
+              </button>
             </div>
           </form>
           {error && <p className="mt-4 text-red-500">{error}</p>}
@@ -309,8 +373,8 @@ const TodoApp: React.FC = () => {
           {/* Notebook holes */}
           <div className="absolute left-6 top-0 bottom-0 flex flex-col justify-around pointer-events-none">
             {[...Array(12)].map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 shadow-inner"
               />
             ))}
@@ -318,7 +382,7 @@ const TodoApp: React.FC = () => {
 
           {/* Red margin line */}
           <div className="absolute left-16 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
-          
+
           {/* Content container with proper padding for holes */}
           <div className="pl-24 pr-8 py-8 notebook-lines">
             {/* Header area */}
@@ -326,11 +390,16 @@ const TodoApp: React.FC = () => {
               <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
                 Elad's Notes
               </h1>
-              <button onClick={handleSignOut} className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Sign Out</button>
+              <button
+                onClick={handleSignOut}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                Sign Out
+              </button>
             </div>
 
             {/* Add Section Button */}
-            <button 
+            <button
               onClick={addSection}
               className="mb-8 px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
                        transition-colors duration-200 shadow-sm hover:shadow
@@ -342,10 +411,7 @@ const TodoApp: React.FC = () => {
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="space-y-4">
                 {sections.map((section) => (
-                  <div
-                    key={section.id}
-                    className="relative group"
-                  >
+                  <div key={section.id} className="relative group">
                     {/* Section Header */}
                     <div className="flex items-center justify-between mb-4 group notebook-line">
                       {editingSectionId === section.id ? (
@@ -354,13 +420,19 @@ const TodoApp: React.FC = () => {
                           value={section.title}
                           onChange={(e) => {
                             const newTitle = e.target.value;
-                            setSections(sections.map(s =>
-                              s.id === section.id ? { ...s, title: newTitle } : s
-                            ));
+                            setSections(
+                              sections.map((s) =>
+                                s.id === section.id
+                                  ? { ...s, title: newTitle }
+                                  : s
+                              )
+                            );
                           }}
-                          onBlur={() => finishEditingSection(section.id, section.title)}
+                          onBlur={() =>
+                            finishEditingSection(section.id, section.title)
+                          }
                           onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               finishEditingSection(section.id, section.title);
                             }
                           }}
@@ -368,14 +440,14 @@ const TodoApp: React.FC = () => {
                           autoFocus
                         />
                       ) : (
-                        <h2 
+                        <h2
                           className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
                           onClick={() => startEditingSection(section.id)}
                         >
                           {section.title}
                         </h2>
                       )}
-                      <button 
+                      <button
                         onClick={() => deleteSection(section.id)}
                         className="text-red-400 hover:text-red-500 transition-colors duration-200
                                  opacity-0 group-hover:opacity-100 text-sm font-medium"
@@ -390,10 +462,16 @@ const TodoApp: React.FC = () => {
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                          className={`${
+                            snapshot.isDraggingOver ? "bg-blue-50" : ""
+                          }`}
                         >
                           {section.todos.map((todo, index) => (
-                            <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
+                            <Draggable
+                              key={todo.id}
+                              draggableId={todo.id.toString()}
+                              index={index}
+                            >
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
@@ -401,35 +479,54 @@ const TodoApp: React.FC = () => {
                                   {...provided.dragHandleProps}
                                   className={`notebook-line flex items-center
                                              hover:bg-blue-50 transition-colors duration-200
-                                             ${snapshot.isDragging ? 'bg-blue-100 shadow-md' : ''}`}
+                                             ${
+                                               snapshot.isDragging
+                                                 ? "bg-blue-100 shadow-md"
+                                                 : ""
+                                             }`}
                                 >
                                   <input
                                     type="checkbox"
-                                    onChange={() => checkTodo(section.id, todo.id)}
+                                    onChange={() =>
+                                      checkTodo(section.id, todo.id)
+                                    }
                                     className="todo-checkbox"
                                   />
-                                  {(editingTodoId === todo.id || newTodoSectionId === section.id && todo.text === '') ? (
+                                  {editingTodoId === todo.id ? (
                                     <input
-                                      ref={newTodoSectionId === section.id ? newTodoInputRef : null}
                                       type="text"
                                       value={todo.text}
                                       onChange={(e) => {
                                         const newText = e.target.value;
-                                        setSections(sections.map(s =>
-                                          s.id === section.id
-                                            ? {
-                                                ...s,
-                                                todos: s.todos.map(t =>
-                                                  t.id === todo.id ? { ...t, text: newText } : t
-                                                )
-                                              }
-                                            : s
-                                        ));
+                                        setSections(
+                                          sections.map((s) =>
+                                            s.id === section.id
+                                              ? {
+                                                  ...s,
+                                                  todos: s.todos.map((t) =>
+                                                    t.id === todo.id
+                                                      ? { ...t, text: newText }
+                                                      : t
+                                                  ),
+                                                }
+                                              : s
+                                          )
+                                        );
                                       }}
-                                      onBlur={() => handleNewTodoBlur(section.id, todo.id, todo.text)}
+                                      onBlur={() =>
+                                        finishEditingTodo(
+                                          section.id,
+                                          todo.id,
+                                          todo.text
+                                        )
+                                      }
                                       onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleNewTodoBlur(section.id, todo.id, todo.text);
+                                        if (e.key === "Enter") {
+                                          finishEditingTodo(
+                                            section.id,
+                                            todo.id,
+                                            todo.text
+                                          );
                                         }
                                       }}
                                       className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
@@ -448,18 +545,39 @@ const TodoApp: React.FC = () => {
                             </Draggable>
                           ))}
                           {provided.placeholder}
+                          {newTodoSectionId === section.id && (
+                            <div className="notebook-line flex items-center">
+                              <div className="todo-checkbox"></div>
+                              <input
+                                ref={newTodoInputRef}
+                                type="text"
+                                value={newTodoText}
+                                onChange={handleNewTodoChange}
+                                onBlur={() => handleNewTodoBlur(section.id)}
+                                onKeyPress={(e) =>
+                                  handleNewTodoKeyPress(e, section.id)
+                                }
+                                className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                                placeholder="New todo"
+                                autoFocus
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </Droppable>
 
                     {/* Add Todo Button */}
-                    <div className="notebook-line flex items-center">
-                      <div
-                        className="add-todo-button mr-3"
-                        onClick={() => addEmptyTodo(section.id)}
-                      />
-                      <div className="flex-1" /> {/* Spacer to push the button to the left */}
-                    </div>
+                    {newTodoSectionId !== section.id && (
+                      <div className="notebook-line flex items-center">
+                        <button
+                          onClick={() => addEmptyTodo(section.id)}
+                          className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+                        >
+                          + Add Todo
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
