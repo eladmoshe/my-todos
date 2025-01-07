@@ -399,14 +399,14 @@ const TodoApp: React.FC = () => {
             </div>
 
             {/* Add Section Button */}
-            <button
-              onClick={addSection}
-              className="mb-8 px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
-                       transition-colors duration-200 shadow-sm hover:shadow
-                       text-sm font-medium tracking-wide relative"
-            >
-              Add Section
-            </button>
+            <div className="notebook-line flex items-center mb-8">
+              <button
+                onClick={addSection}
+                className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+              >
+                + Add Section
+              </button>
+            </div>
 
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="space-y-4">
