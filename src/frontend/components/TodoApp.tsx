@@ -161,10 +161,10 @@ const TodoApp: React.FC = () => {
     }
 
     const sourceSection = sections.find(
-      (s) => s.id === parseInt(source.droppableId, 10)
+      (s) => s.id.toString() === source.droppableId
     );
     const destSection = sections.find(
-      (s) => s.id === parseInt(destination.droppableId, 10)
+      (s) => s.id.toString() === destination.droppableId
     );
 
     if (!sourceSection || !destSection) {
