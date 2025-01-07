@@ -6,20 +6,24 @@
 }
 
 /* Custom styling for the notebook lines */
-.notebook-lines {
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 27px,
-    theme('colors.gray.200') 27px,
-    theme('colors.gray.200') 28px
-  );
-  @apply bg-[0_50px];
+.notebook-paper {
+  background-image: linear-gradient(#e6e6e6 1px, transparent 1px);
+  background-size: 100% 32px;
+  @apply pt-[16px] pb-[16px] px-8;
+}
+
+/* Align content with notebook lines */
+.notebook-content {
+  @apply leading-[32px];
+}
+
+.notebook-line {
+  @apply h-[32px] flex items-center;
 }
 
 /* Custom checkbox styling */
 .todo-checkbox {
-  @apply relative w-4 h-4 border-2 border-gray-200 rounded transition-all duration-200;
+  @apply relative w-4 h-4 border-2 border-gray-300 rounded transition-all duration-200 mr-3 flex-shrink-0;
 }
 
 /* Custom styling for drag and drop visual feedback */

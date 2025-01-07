@@ -291,12 +291,7 @@ const TodoApp: React.FC = () => {
           <div className="absolute left-16 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
           
           {/* Content container with proper padding for holes */}
-          <div className="pl-24 pr-8 py-8">
-            {/* Blue lines background */}
-            <div 
-              className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none notebook-lines"
-            ></div>
-
+          <div className="pl-24 pr-8 py-8 notebook-lines">
             {/* Header area */}
             <div className="relative mb-12 flex justify-between items-center">
               <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
@@ -316,14 +311,14 @@ const TodoApp: React.FC = () => {
             </button>
 
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="space-y-10 relative">
+              <div className="space-y-10 relative notebook-content">
                 {sections.map((section) => (
                   <div
                     key={section.id}
                     className="relative group"
                   >
                     {/* Section Header */}
-                    <div className="flex items-center justify-between mb-4 group">
+                    <div className="flex items-center justify-between mb-4 group notebook-line">
                       {editingSectionId === section.id ? (
                         <input
                           type="text"
@@ -366,7 +361,7 @@ const TodoApp: React.FC = () => {
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`space-y-3 ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                          className={`space-y-0 ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
                         >
                           {section.todos.map((todo, index) => (
                             <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
@@ -375,15 +370,14 @@ const TodoApp: React.FC = () => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`flex items-center space-x-4 py-1.5 group/todo
-                                             hover:bg-blue-50 rounded px-2 transition-colors duration-200
+                                  className={`flex items-center notebook-line
+                                             hover:bg-blue-50 transition-colors duration-200
                                              ${snapshot.isDragging ? 'bg-blue-100 shadow-md' : ''}`}
                                 >
                                   <input
                                     type="checkbox"
                                     onChange={() => checkTodo(section.id, todo.id)}
-                                    className="h-4 w-4 rounded border-gray-300 text-blue-500 
-                                             focus:ring-blue-500 cursor-pointer"
+                                    className="todo-checkbox"
                                   />
                                   {editingTodoId === todo.id ? (
                                     <input
@@ -438,15 +432,13 @@ const TodoApp: React.FC = () => {
                           input.value = '';
                         }
                       }}
-                      className="mt-4 flex space-x-2"
+                      className="mt-4 flex space-x-2 notebook-line"
                     >
                       <input
                         type="text"
                         name="todo"
                         placeholder="Add new todo"
-                        className="flex-1 rounded-lg border-gray-200 shadow-sm 
-                                 focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                                 placeholder:text-gray-400 text-lg py-2"
+                        className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
                       />
                       <button 
                         type="submit"
