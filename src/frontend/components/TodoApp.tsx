@@ -13,6 +13,13 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
+const ChainIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1 mb-1">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+  </svg>
+);
+
 interface Todo {
   id: number;
   text: string;
@@ -37,11 +44,55 @@ const TodoApp: React.FC = () => {
   const [newTodoSectionId, setNewTodoSectionId] = useState<number | null>(null);
   const [newTodoText, setNewTodoText] = useState<string>("");
   const newTodoInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   const formatCreatedAt = (timestamp: string) => {
     // Parse the PostgreSQL timestamp and format it
     const date = parseISO(timestamp);
     return format(date, "MMM d, yyyy HH:mm");
+  };
+
+  const shortenUrl = (url: string, maxLength: number = 50) => {
+    // Remove the protocol (http:// or https://)
+    let displayUrl = url.replace(/^https?:\/\//, '');
+    
+    if (displayUrl.length <= maxLength) return displayUrl;
+    
+    // Calculate lengths
+    const ellipsis = '...';
+    const frontLength = Math.ceil((maxLength - ellipsis.length) / 2);
+    const backLength = Math.floor((maxLength - ellipsis.length) / 2);
+    
+    // Truncate the middle
+    return displayUrl.substring(0, frontLength) + 
+           ellipsis + 
+           displayUrl.substring(displayUrl.length - backLength);
+  };
+
+  const renderTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        const shortenedUrl = shortenUrl(part);
+        return (
+          <React.Fragment key={index}>
+            <ChainIcon />
+            <a
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="todo-link"
+              title={part}
+            >
+              {shortenedUrl}
+            </a>
+          </React.Fragment>
+        );
+      }
+      return part;
+    });
   };
 
   useEffect(() => {
@@ -371,6 +422,61 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const handleTodoClick = (e: React.MouseEvent, todoId: number) => {
+    if (!(e.target as HTMLElement).closest('a')) {
+      setEditingTodoId(todoId);
+    }
+  };
+
+  const handleTodoBlur = (sectionId: number, todoId: number, newText: string) => {
+    finishEditingTodo(sectionId, todoId, newText);
+    setEditingTodoId(null);
+  };
+
+  useEffect(() => {
+    if (editingTodoId !== null && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingTodoId]);
+
+  const renderTodoItem = (section: TodoSection, todo: Todo) => {
+    if (editingTodoId === todo.id) {
+      return (
+        <textarea
+          ref={editInputRef}
+          value={todo.text}
+          onChange={(e) => {
+            const newText = e.target.value;
+            setSections(sections.map(s => 
+              s.id === section.id 
+                ? {...s, todos: s.todos.map(t => 
+                    t.id === todo.id ? {...t, text: newText} : t
+                  )}
+                : s
+            ));
+          }}
+          onBlur={() => handleTodoBlur(section.id, todo.id, todo.text)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleTodoBlur(section.id, todo.id, todo.text);
+            }
+          }}
+          className="todo-input"
+        />
+      );
+    }
+
+    return (
+      <div 
+        className="todo-item-content"
+        onClick={(e) => handleTodoClick(e, todo.id)}
+      >
+        {renderTextWithLinks(todo.text)}
+      </div>
+    );
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
@@ -550,60 +656,7 @@ const TodoApp: React.FC = () => {
                                       }
                                       className="todo-checkbox"
                                     />
-                                    <div className="flex-grow">
-                                      {editingTodoId === todo.id ? (
-                                        <textarea
-                                          value={todo.text}
-                                          onChange={(e) => {
-                                            const newText = e.target.value;
-                                            setSections(
-                                              sections.map((s) =>
-                                                s.id === section.id
-                                                  ? {
-                                                      ...s,
-                                                      todos: s.todos.map((t) =>
-                                                        t.id === todo.id
-                                                          ? {
-                                                              ...t,
-                                                              text: newText,
-                                                            }
-                                                          : t
-                                                      ),
-                                                    }
-                                                  : s
-                                              )
-                                            );
-                                            autoResizeTextarea(e.target);
-                                          }}
-                                          onBlur={() =>
-                                            finishEditingTodo(
-                                              section.id,
-                                              todo.id,
-                                              todo.text
-                                            )
-                                          }
-                                          onKeyDown={(e) =>
-                                            handleKeyDown(
-                                              e,
-                                              section.id,
-                                              todo.id
-                                            )
-                                          }
-                                          className="todo-input"
-                                          rows={1}
-                                          autoFocus
-                                        />
-                                      ) : (
-                                        <span
-                                          className="todo-text cursor-pointer"
-                                          onClick={() =>
-                                            startEditingTodo(todo.id)
-                                          }
-                                        >
-                                          {todo.text}
-                                        </span>
-                                      )}
-                                    </div>
+                                    {renderTodoItem(section, todo)}
                                   </div>
                                   <span className="todo-timestamp">
                                     {formatCreatedAt(todo.created_at)}

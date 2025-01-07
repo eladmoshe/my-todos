@@ -80,6 +80,18 @@ textarea {
 }
 
 /* Adjustments for editing state */
+.todo-item-content {
+  cursor: text;
+  flex-grow: 1;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.todo-item-content:hover {
+  background-color: rgba(59, 130, 246, 0.1); /* Light blue background on hover */
+}
+
 .todo-input {
   width: 100%;
   background: transparent;
@@ -157,4 +169,22 @@ textarea {
   line-height: 32px;
   padding: 0;
   margin: 0;
+}
+
+/* Styles for links in todo items */
+.todo-link {
+  display: inline-flex;
+  align-items: center;
+  color: #3b82f6; /* Blue color for links */
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.todo-link:hover {
+  color: #2563eb; /* Darker blue on hover */
+  text-decoration: underline;
+}
+
+.todo-link svg {
+  margin-right: 4px;
 }
