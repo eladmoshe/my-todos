@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './todo-styles.css';
+import supabase, { signIn, signUp } from '../../supabaseClient';
 
 interface Todo {
   id: string;
@@ -13,43 +14,120 @@ interface TodoSection {
 }
 
 const TodoApp: React.FC = () => {
-  const [sections, setSections] = useState<TodoSection[]>([
-    { id: '1', title: 'To Do', todos: [] },
-  ]);
+  const [sections, setSections] = useState<TodoSection[]>([]);
   const [draggedTodo, setDraggedTodo] = useState<{todoId: string, sectionId: string} | null>(null);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const addSection = () => {
-    const newSection: TodoSection = {
-      id: Date.now().toString(),
-      title: 'New Section',
-      todos: [],
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
     };
-    setSections([...sections, newSection]);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSections();
+    }
+  }, [user]);
+
+  const fetchSections = async () => {
+    const { data, error } = await supabase
+      .from('sections')
+      .select('*')
+      .order('id');
+    if (error) {
+      console.error('Error fetching sections:', error);
+    } else {
+      const sectionsWithTodos = await Promise.all(data.map(async (section) => {
+        const { data: todos, error: todosError } = await supabase
+          .from('todos')
+          .select('*')
+          .eq('section_id', section.id)
+          .order('id');
+        if (todosError) {
+          console.error('Error fetching todos:', todosError);
+          return { ...section, todos: [] };
+        }
+        return { ...section, todos };
+      }));
+      setSections(sectionsWithTodos);
+    }
   };
 
-  const deleteSection = (sectionId: string) => {
-    setSections(sections.filter(section => section.id !== sectionId));
+  const addSection = async () => {
+    const { data, error } = await supabase
+      .from('sections')
+      .insert({ title: 'New Section' })
+      .select()
+      .single();
+    if (error) {
+      console.error('Error adding section:', error);
+    } else {
+      setSections([...sections, { ...data, todos: [] }]);
+    }
   };
 
-  const addTodo = (sectionId: string, todoText: string) => {
-    setSections(sections.map(section =>
-      section.id === sectionId
-        ? {
-            ...section,
-            todos: [...section.todos, { id: Date.now().toString(), text: todoText }],
-          }
-        : section
-    ));
+  const deleteSection = async (sectionId: string) => {
+    const { error } = await supabase
+      .from('sections')
+      .delete()
+      .eq('id', sectionId);
+    if (error) {
+      console.error('Error deleting section:', error);
+    } else {
+      setSections(sections.filter(section => section.id !== sectionId));
+    }
   };
 
-  const checkTodo = (sectionId: string, todoId: string) => {
-    setSections(sections.map(section =>
-      section.id === sectionId
-        ? { ...section, todos: section.todos.filter(todo => todo.id !== todoId) }
-        : section
-    ));
+  const addTodo = async (sectionId: string, todoText: string) => {
+    const { data, error } = await supabase
+      .from('todos')
+      .insert({ text: todoText, section_id: sectionId })
+      .select()
+      .single();
+    if (error) {
+      console.error('Error adding todo:', error);
+    } else {
+      setSections(sections.map(section =>
+        section.id === sectionId
+          ? { ...section, todos: [...section.todos, data] }
+          : section
+      ));
+    }
+  };
+
+  const checkTodo = async (sectionId: string, todoId: string) => {
+    const { error } = await supabase
+      .from('todos')
+      .delete()
+      .eq('id', todoId);
+    if (error) {
+      console.error('Error deleting todo:', error);
+    } else {
+      setSections(sections.map(section =>
+        section.id === sectionId
+          ? { ...section, todos: section.todos.filter(todo => todo.id !== todoId) }
+          : section
+      ));
+    }
   };
 
   const handleTodoDragStart = (e: React.DragEvent, todoId: string, sectionId: string) => {
@@ -63,7 +141,7 @@ const TodoApp: React.FC = () => {
     setDraggedTodo(null);
   };
 
-  const handleTodoDrop = (e: React.DragEvent, targetSectionId: string) => {
+  const handleTodoDrop = async (e: React.DragEvent, targetSectionId: string) => {
     e.preventDefault();
     if (!draggedTodo) return;
 
@@ -74,21 +152,30 @@ const TodoApp: React.FC = () => {
     const todo = sourceSection?.todos.find(t => t.id === todoId);
     
     if (todo) {
-      setSections(sections.map(section => {
-        if (section.id === sourceSectionId) {
-          return {
-            ...section,
-            todos: section.todos.filter(t => t.id !== todoId)
-          };
-        }
-        if (section.id === targetSectionId) {
-          return {
-            ...section,
-            todos: [...section.todos, todo]
-          };
-        }
-        return section;
-      }));
+      const { error } = await supabase
+        .from('todos')
+        .update({ section_id: targetSectionId })
+        .eq('id', todoId);
+      
+      if (error) {
+        console.error('Error moving todo:', error);
+      } else {
+        setSections(sections.map(section => {
+          if (section.id === sourceSectionId) {
+            return {
+              ...section,
+              todos: section.todos.filter(t => t.id !== todoId)
+            };
+          }
+          if (section.id === targetSectionId) {
+            return {
+              ...section,
+              todos: [...section.todos, todo]
+            };
+          }
+          return section;
+        }));
+      }
     }
   };
 
@@ -103,7 +190,7 @@ const TodoApp: React.FC = () => {
     setDraggedSection(null);
   };
 
-  const handleSectionDragOver = (e: React.DragEvent, targetSectionId: string) => {
+  const handleSectionDragOver = async (e: React.DragEvent, targetSectionId: string) => {
     e.preventDefault();
     if (!draggedSection || draggedSection === targetSectionId) return;
 
@@ -114,7 +201,22 @@ const TodoApp: React.FC = () => {
       const newSections = [...sections];
       const [draggedItem] = newSections.splice(draggedIndex, 1);
       newSections.splice(targetIndex, 0, draggedItem);
-      setSections(newSections);
+
+      // Update the order in the database
+      const updates = newSections.map((section, index) => ({
+        id: section.id,
+        order: index
+      }));
+
+      const { error } = await supabase
+        .from('sections')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Error reordering sections:', error);
+      } else {
+        setSections(newSections);
+      }
     }
   };
 
@@ -122,17 +224,81 @@ const TodoApp: React.FC = () => {
     setEditingSectionId(sectionId);
   };
 
-  const finishEditingSection = (sectionId: string, newTitle: string) => {
-    setSections(sections.map(section =>
-      section.id === sectionId ? { ...section, title: newTitle } : section
-    ));
+  const finishEditingSection = async (sectionId: string, newTitle: string) => {
+    const { error } = await supabase
+      .from('sections')
+      .update({ title: newTitle })
+      .eq('id', sectionId);
+
+    if (error) {
+      console.error('Error updating section title:', error);
+    } else {
+      setSections(sections.map(section =>
+        section.id === sectionId ? { ...section, title: newTitle } : section
+      ));
+    }
     setEditingSectionId(null);
   };
+
+  const handleAuth = async (e: React.FormEvent, isSignUp: boolean) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { user, error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
+      if (error) {
+        setError(error.message);
+      } else {
+        console.log(`${isSignUp ? 'Signed up' : 'Signed in'}:`, user);
+      }
+    } catch (error) {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error signing out:', error);
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
+          <h2 className="text-2xl font-serif text-gray-800 mb-6">Sign Up or Sign In</h2>
+          <form onSubmit={(e) => handleAuth(e, true)} className="space-y-4">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex space-x-4">
+              <button type="submit" disabled={isLoading} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Sign Up</button>
+              <button type="button" onClick={(e) => handleAuth(e, false)} disabled={isLoading} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">Sign In</button>
+            </div>
+          </form>
+          {error && <p className="mt-4 text-red-500">{error}</p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
       <div className="max-w-3xl mx-auto">
-        {/* Notebook container with enhanced shadow and rounded corners */}
         <div className="bg-white rounded-xl shadow-2xl relative overflow-hidden">
           {/* Notebook holes */}
           <div className="absolute left-6 top-0 bottom-0 flex flex-col justify-around pointer-events-none">
@@ -151,25 +317,15 @@ const TodoApp: React.FC = () => {
           <div className="pl-24 pr-8 py-8">
             {/* Blue lines background */}
             <div 
-              className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none"
-              style={{
-                backgroundImage: `
-                  repeating-linear-gradient(0deg, 
-                    transparent,
-                    transparent 27px,
-                    #e5e7eb 27px,
-                    #e5e7eb 28px
-                  )`,
-                backgroundPosition: '0 50px',
-                opacity: 0.6
-              }}
+              className="absolute left-0 right-0 top-0 bottom-0 pointer-events-none notebook-lines"
             ></div>
 
             {/* Header area */}
-            <div className="relative mb-12">
+            <div className="relative mb-12 flex justify-between items-center">
               <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
                 My Notes
               </h1>
+              <button onClick={handleSignOut} className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Sign Out</button>
             </div>
 
             {/* Add Section Button */}
