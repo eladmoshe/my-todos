@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from 'react';
 import "./todo-styles.css";
 import supabase, { signIn, signUp } from "../../supabaseClient";
 import {
@@ -403,22 +403,27 @@ const TodoApp: React.FC = () => {
   };
 
   const autoResizeTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = "auto";
-    element.style.height = element.scrollHeight + "px";
+    element.style.height = '32px'; // Set to one line height
+    element.style.height = `${element.scrollHeight}px`;
   };
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLTextAreaElement>,
-    sectionId: number,
-    todoId: number
-  ) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleTodoChange = (sectionId: number, todoId: number, newText: string) => {
+    setSections(sections.map(s => 
+      s.id === sectionId 
+        ? {...s, todos: s.todos.map(t => 
+            t.id === todoId ? {...t, text: newText} : t
+          )}
+        : s
+    ));
+    if (editInputRef.current) {
+      autoResizeTextarea(editInputRef.current);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, sectionId: number, todoId: number) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      finishEditingTodo(
-        sectionId,
-        todoId,
-        (e.target as HTMLTextAreaElement).value
-      );
+      finishEditingTodo(sectionId, todoId, (e.target as HTMLTextAreaElement).value);
     }
   };
 
@@ -436,43 +441,43 @@ const TodoApp: React.FC = () => {
   useEffect(() => {
     if (editingTodoId !== null && editInputRef.current) {
       editInputRef.current.focus();
+      autoResizeTextarea(editInputRef.current);
     }
   }, [editingTodoId]);
 
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
-    if (editingTodoId === todo.id) {
-      return (
-        <textarea
-          ref={editInputRef}
-          value={todo.text}
-          onChange={(e) => {
-            const newText = e.target.value;
-            setSections(sections.map(s => 
-              s.id === section.id 
-                ? {...s, todos: s.todos.map(t => 
-                    t.id === todo.id ? {...t, text: newText} : t
-                  )}
-                : s
-            ));
-          }}
-          onBlur={() => handleTodoBlur(section.id, todo.id, todo.text)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleTodoBlur(section.id, todo.id, todo.text);
-            }
-          }}
-          className="todo-input"
-        />
-      );
-    }
-
     return (
-      <div 
-        className="todo-item-content"
-        onClick={(e) => handleTodoClick(e, todo.id)}
-      >
-        {renderTextWithLinks(todo.text)}
+      <div className="todo-item-container">
+        <input
+          type="checkbox"
+          onChange={() => checkTodo(section.id, todo.id)}
+          className="todo-checkbox"
+        />
+        <div className="todo-content-wrapper">
+          {editingTodoId === todo.id ? (
+            <textarea
+              ref={editInputRef}
+              value={todo.text}
+              onChange={(e) => handleTodoChange(section.id, todo.id, e.target.value)}
+              onBlur={() => handleTodoBlur(section.id, todo.id, todo.text)}
+              onKeyDown={(e) => handleKeyDown(e, section.id, todo.id)}
+              className="todo-input"
+              style={{ height: 'auto', overflow: 'hidden' }}
+            />
+          ) : (
+            <div 
+              className="todo-item-content"
+              onClick={(e) => handleTodoClick(e, todo.id)}
+            >
+              {todo.text.split('\n').map((line, index) => (
+                <React.Fragment key={index}>
+                  {renderTextWithLinks(line)}
+                  {index < todo.text.split('\n').length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -647,21 +652,7 @@ const TodoApp: React.FC = () => {
                                                : ""
                                            }`}
                               >
-                                <div className="todo-item-container">
-                                  <div className="todo-content-wrapper">
-                                    <input
-                                      type="checkbox"
-                                      onChange={() =>
-                                        checkTodo(section.id, todo.id)
-                                      }
-                                      className="todo-checkbox"
-                                    />
-                                    {renderTodoItem(section, todo)}
-                                  </div>
-                                  <span className="todo-timestamp">
-                                    {formatCreatedAt(todo.created_at)}
-                                  </span>
-                                </div>
+                                {renderTodoItem(section, todo)}
                               </div>
                             )}
                           </Draggable>
