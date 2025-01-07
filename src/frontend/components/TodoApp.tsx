@@ -8,6 +8,7 @@ import {
   DropResult,
 } from "react-beautiful-dnd";
 import { format, parseISO } from 'date-fns'; // Make sure to install this package: npm install date-fns
+import { ArrowRightOnRectangleIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface Todo {
   id: number;
@@ -376,208 +377,210 @@ const TodoApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-2xl relative overflow-hidden">
-          {/* Notebook holes */}
-          <div className="absolute left-6 top-0 bottom-0 flex flex-col justify-around pointer-events-none">
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 shadow-inner"
-              />
-            ))}
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+        {/* Notebook holes */}
+        <div className="absolute left-4 top-4 bottom-4 flex flex-col justify-around">
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 shadow-inner"
+            />
+          ))}
+        </div>
+
+        {/* Red margin line */}
+        <div className="absolute left-16 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
+
+        {/* Content container with proper padding for holes */}
+        <div className="pl-24 pr-8 py-8 notebook-lines relative">
+          {/* Sign Out Button */}
+          <button
+            onClick={handleSignOut}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            title="Sign Out"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+          </button>
+
+          {/* Header area */}
+          <div className="relative mb-12">
+            <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
+              Elad's Notes
+            </h1>
           </div>
 
-          {/* Red margin line */}
-          <div className="absolute left-16 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
+          {/* Add Section Button */}
+          <div className="notebook-line flex items-center mb-8">
+            <button
+              onClick={addSection}
+              className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+            >
+              + Add Section
+            </button>
+          </div>
 
-          {/* Content container with proper padding for holes */}
-          <div className="pl-24 pr-8 py-8 notebook-lines">
-            {/* Header area */}
-            <div className="relative mb-12 flex justify-between items-center">
-              <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
-                Elad's Notes
-              </h1>
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-              >
-                Sign Out
-              </button>
-            </div>
-
-            {/* Add Section Button */}
-            <div className="notebook-line flex items-center mb-8">
-              <button
-                onClick={addSection}
-                className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-              >
-                + Add Section
-              </button>
-            </div>
-
-            <DragDropContext onDragEnd={onDragEnd}>
-              <div className="space-y-4">
-                {sections.map((section) => (
-                  <div key={section.id} className="relative">
-                    {/* Section Header */}
-                    <div className="flex items-center justify-between mb-4 group notebook-line">
-                      {editingSectionId === section.id ? (
-                        <input
-                          type="text"
-                          value={section.title}
-                          onChange={(e) => {
-                            const newTitle = e.target.value;
-                            setSections(
-                              sections.map((s) =>
-                                s.id === section.id
-                                  ? { ...s, title: newTitle }
-                                  : s
-                              )
-                            );
-                          }}
-                          onBlur={() =>
-                            finishEditingSection(section.id, section.title)
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <div key={section.id} className="relative">
+                  {/* Section Header */}
+                  <div className="flex items-center justify-between mb-4 group notebook-line">
+                    {editingSectionId === section.id ? (
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => {
+                          const newTitle = e.target.value;
+                          setSections(
+                            sections.map((s) =>
+                              s.id === section.id
+                                ? { ...s, title: newTitle }
+                                : s
+                            )
+                          );
+                        }}
+                        onBlur={() =>
+                          finishEditingSection(section.id, section.title)
+                        }
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            finishEditingSection(section.id, section.title);
                           }
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              finishEditingSection(section.id, section.title);
-                            }
-                          }}
-                          className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
-                          autoFocus
-                        />
-                      ) : (
-                        <h2
-                          className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
-                          onClick={() => startEditingSection(section.id)}
-                        >
-                          {section.title}
-                        </h2>
-                      )}
-                      <button
-                        onClick={() => deleteSection(section.id)}
-                        className="text-red-400 hover:text-red-500 transition-colors duration-200
-                                 opacity-0 group-hover:opacity-100 text-sm font-medium"
+                        }}
+                        className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <h2
+                        className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
+                        onClick={() => startEditingSection(section.id)}
                       >
-                        Delete
-                      </button>
-                    </div>
+                        {section.title}
+                      </h2>
+                    )}
+                    <button
+                      onClick={() => deleteSection(section.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors duration-200
+                               opacity-0 group-hover:opacity-100"
+                      title="Delete Section"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
 
-                    {/* Todos Container */}
-                    <Droppable droppableId={section.id.toString()} type="todo">
-                      {(provided, snapshot) => (
-                        <div
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          className={`${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
-                        >
-                          {section.todos.map((todo, index) => (
-                            <Draggable
-                              key={todo.id}
-                              draggableId={todo.id.toString()}
-                              index={index}
-                            >
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`notebook-line flex items-center justify-between
-                                             hover:bg-blue-50 transition-colors duration-200 group
-                                             ${snapshot.isDragging ? "bg-blue-100 shadow-md" : ""}`}
-                                >
-                                  <div className="flex items-center flex-grow">
+                  {/* Todos Container */}
+                  <Droppable droppableId={section.id.toString()} type="todo">
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
+                      >
+                        {section.todos.map((todo, index) => (
+                          <Draggable
+                            key={todo.id}
+                            draggableId={todo.id.toString()}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`notebook-line flex items-center justify-between
+                                           hover:bg-blue-50 transition-colors duration-200 group
+                                           ${snapshot.isDragging ? "bg-blue-100 shadow-md" : ""}`}
+                              >
+                                <div className="flex items-center flex-grow">
+                                  <input
+                                    type="checkbox"
+                                    onChange={() => checkTodo(section.id, todo.id)}
+                                    className="todo-checkbox"
+                                  />
+                                  {editingTodoId === todo.id ? (
                                     <input
-                                      type="checkbox"
-                                      onChange={() => checkTodo(section.id, todo.id)}
-                                      className="todo-checkbox"
+                                      type="text"
+                                      value={todo.text}
+                                      onChange={(e) => {
+                                        const newText = e.target.value;
+                                        setSections(
+                                          sections.map((s) =>
+                                            s.id === section.id
+                                              ? {
+                                                  ...s,
+                                                  todos: s.todos.map((t) =>
+                                                    t.id === todo.id
+                                                      ? { ...t, text: newText }
+                                                      : t
+                                                  ),
+                                                }
+                                              : s
+                                          )
+                                        );
+                                      }}
+                                      onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
+                                      onKeyPress={(e) => {
+                                        if (e.key === "Enter") {
+                                          finishEditingTodo(section.id, todo.id, todo.text);
+                                        }
+                                      }}
+                                      className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                                      autoFocus
                                     />
-                                    {editingTodoId === todo.id ? (
-                                      <input
-                                        type="text"
-                                        value={todo.text}
-                                        onChange={(e) => {
-                                          const newText = e.target.value;
-                                          setSections(
-                                            sections.map((s) =>
-                                              s.id === section.id
-                                                ? {
-                                                    ...s,
-                                                    todos: s.todos.map((t) =>
-                                                      t.id === todo.id
-                                                        ? { ...t, text: newText }
-                                                        : t
-                                                    ),
-                                                  }
-                                                : s
-                                            )
-                                          );
-                                        }}
-                                        onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
-                                        onKeyPress={(e) => {
-                                          if (e.key === "Enter") {
-                                            finishEditingTodo(section.id, todo.id, todo.text);
-                                          }
-                                        }}
-                                        className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      <span
-                                        className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
-                                        onClick={() => startEditingTodo(todo.id)}
-                                      >
-                                        {todo.text}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-gray-400 hidden group-hover:inline-block ml-2">
-                                    {formatCreatedAt(todo.created_at)}
-                                  </span>
+                                  ) : (
+                                    <span
+                                      className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
+                                      onClick={() => startEditingTodo(todo.id)}
+                                    >
+                                      {todo.text}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          {newTodoSectionId === section.id && (
-                            <div className="notebook-line flex items-center">
-                              <div className="todo-checkbox"></div>
-                              <input
-                                ref={newTodoInputRef}
-                                type="text"
-                                value={newTodoText}
-                                onChange={handleNewTodoChange}
-                                onBlur={() => handleNewTodoBlur(section.id)}
-                                onKeyPress={(e) =>
-                                  handleNewTodoKeyPress(e, section.id)
-                                }
-                                className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
-                                placeholder="New todo"
-                                autoFocus
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Droppable>
-
-                    {/* Add Todo Button */}
-                    {newTodoSectionId !== section.id && (
-                      <div className="notebook-line flex items-center">
-                        <button
-                          onClick={() => addEmptyTodo(section.id)}
-                          className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-                        >
-                          + Add Todo
-                        </button>
+                                <span className="text-xs text-gray-400 hidden group-hover:inline-block ml-2">
+                                  {formatCreatedAt(todo.created_at)}
+                                </span>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {newTodoSectionId === section.id && (
+                          <div className="notebook-line flex items-center">
+                            <div className="todo-checkbox"></div>
+                            <input
+                              ref={newTodoInputRef}
+                              type="text"
+                              value={newTodoText}
+                              onChange={handleNewTodoChange}
+                              onBlur={() => handleNewTodoBlur(section.id)}
+                              onKeyPress={(e) =>
+                                handleNewTodoKeyPress(e, section.id)
+                              }
+                              className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                              placeholder="New todo"
+                              autoFocus
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                ))}
-              </div>
-            </DragDropContext>
-          </div>
+                  </Droppable>
+
+                  {/* Add Todo Button */}
+                  {newTodoSectionId !== section.id && (
+                    <div className="notebook-line flex items-center">
+                      <button
+                        onClick={() => addEmptyTodo(section.id)}
+                        className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+                      >
+                        + Add Todo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </DragDropContext>
         </div>
       </div>
     </div>
