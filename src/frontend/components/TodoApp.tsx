@@ -11,6 +11,8 @@ import { format, parseISO } from "date-fns"; // Make sure to install this packag
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 // Remove the import for Switch from @headlessui/react
 
@@ -142,7 +144,7 @@ const TodoApp: React.FC = () => {
     const { data, error } = await supabase
       .from("sections")
       .select("*")
-      .order("id");
+      .order("order");
     if (error) {
       console.error("Error fetching sections:", error);
     } else {
@@ -584,6 +586,37 @@ const TodoApp: React.FC = () => {
     </div>
   );
 
+  const reorderSection = async (sectionId: number, direction: 'up' | 'down') => {
+    const currentIndex = sections.findIndex(section => section.id === sectionId);
+    if (
+      (direction === 'up' && currentIndex === 0) ||
+      (direction === 'down' && currentIndex === sections.length - 1)
+    ) {
+      return; // Can't move further in this direction
+    }
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const newSections = [...sections];
+    const [movedSection] = newSections.splice(currentIndex, 1);
+    newSections.splice(newIndex, 0, movedSection);
+
+    setSections(newSections);
+
+    // Update the order in the database
+    try {
+      await Promise.all(newSections.map((section, index) => 
+        supabase
+          .from("sections")
+          .update({ order: index })
+          .eq("id", section.id)
+      ));
+    } catch (error) {
+      console.error("Error updating section order:", error);
+      // Optionally, revert the state if the database update fails
+      setSections(sections);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -653,7 +686,7 @@ const TodoApp: React.FC = () => {
 
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="space-y-4">
-              {filteredSections.map((section) => (
+              {filteredSections.map((section, index) => (
                 <div key={section.id} className="relative">
                   {/* Section Header */}
                   <div className="flex items-center justify-between mb-4 group notebook-line">
@@ -690,14 +723,34 @@ const TodoApp: React.FC = () => {
                         {section.title}
                       </h2>
                     )}
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors duration-200
-                               opacity-0 group-hover:opacity-100"
-                      title="Delete Section"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => reorderSection(section.id, 'up')}
+                        className="text-gray-400 hover:text-blue-500 transition-colors duration-200
+                                   opacity-0 group-hover:opacity-100"
+                        title="Move Section Up"
+                        disabled={index === 0}
+                      >
+                        <ChevronUpIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => reorderSection(section.id, 'down')}
+                        className="text-gray-400 hover:text-blue-500 transition-colors duration-200
+                                   opacity-0 group-hover:opacity-100"
+                        title="Move Section Down"
+                        disabled={index === filteredSections.length - 1}
+                      >
+                        <ChevronDownIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => deleteSection(section.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors duration-200
+                                   opacity-0 group-hover:opacity-100"
+                        title="Delete Section"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Todos Container */}
