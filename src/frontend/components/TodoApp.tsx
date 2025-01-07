@@ -12,6 +12,7 @@ import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
+// Remove the import for Switch from @headlessui/react
 
 const ChainIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1 mb-1">
@@ -24,6 +25,8 @@ interface Todo {
   id: number;
   text: string;
   created_at: string; // This is the PostgreSQL timestamp string
+  completed: boolean;
+  completed_at: string | null;
 }
 
 interface TodoSection {
@@ -45,6 +48,22 @@ const TodoApp: React.FC = () => {
   const [newTodoText, setNewTodoText] = useState<string>("");
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        setIsFiltersOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const formatCreatedAt = (timestamp: string) => {
     // Parse the PostgreSQL timestamp and format it
@@ -211,22 +230,40 @@ const TodoApp: React.FC = () => {
   };
 
   const checkTodo = async (sectionId: number, todoId: number) => {
-    const { error } = await supabase.from("todos").delete().eq("id", todoId);
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("todos")
+      .update({ completed: true, completed_at: now })
+      .eq("id", todoId)
+      .select()
+      .single();
+
     if (error) {
-      console.error("Error deleting todo:", error);
+      console.error("Error updating todo:", error);
     } else {
       setSections(
         sections.map((section) =>
           section.id === sectionId
             ? {
                 ...section,
-                todos: section.todos.filter((todo) => todo.id !== todoId),
+                todos: section.todos.map((todo) =>
+                  todo.id === todoId ? { ...todo, completed: true, completed_at: now } : todo
+                ),
               }
             : section
         )
       );
     }
   };
+
+  const toggleShowCompleted = () => {
+    setShowCompleted(!showCompleted);
+  };
+
+  const filteredSections = sections.map(section => ({
+    ...section,
+    todos: section.todos.filter(todo => showCompleted || !todo.completed)
+  }));
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination } = result;
@@ -447,9 +484,10 @@ const TodoApp: React.FC = () => {
 
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
     return (
-      <div className="todo-item-container">
+      <div className={`todo-item-container ${todo.completed ? 'opacity-50' : ''}`}>
         <input
           type="checkbox"
+          checked={todo.completed}
           onChange={() => checkTodo(section.id, todo.id)}
           className="todo-checkbox"
         />
@@ -466,18 +504,18 @@ const TodoApp: React.FC = () => {
             />
           ) : (
             <div 
-              className="todo-item-content"
+              className={`todo-item-content ${todo.completed ? 'todo-completed' : ''}`}
               onClick={(e) => handleTodoClick(e, todo.id)}
             >
-              {todo.text.split('\n').map((line, index) => (
-                <React.Fragment key={index}>
-                  {renderTextWithLinks(line)}
-                  {index < todo.text.split('\n').length - 1 && <br />}
-                </React.Fragment>
-              ))}
+              {renderTextWithLinks(todo.text)}
             </div>
           )}
         </div>
+        <span className="todo-timestamp">
+          {todo.completed 
+            ? `Completed: ${formatCreatedAt(todo.completed_at!)}` 
+            : formatCreatedAt(todo.created_at)}
+        </span>
       </div>
     );
   };
@@ -530,6 +568,22 @@ const TodoApp: React.FC = () => {
     );
   }
 
+  // Add this custom Toggle component
+  const Toggle: React.FC<{ checked: boolean; onChange: () => void }> = ({ checked, onChange }) => (
+    <div
+      className={`relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
+        checked ? 'bg-blue-600' : 'bg-gray-200'
+      }`}
+      onClick={onChange}
+    >
+      <span
+        className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
+          checked ? 'translate-x-4' : 'translate-x-0'
+        }`}
+      />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -564,8 +618,31 @@ const TodoApp: React.FC = () => {
             </h1>
           </div>
 
+          {/* Controls line */}
+          <div className="flex items-center mb-8 border-b border-gray-200 pb-2">
+            {/* Filters dropdown */}
+            <div className="relative" ref={filtersRef}>
+              <button
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
+              >
+                Filters ▼
+              </button>
+              {isFiltersOpen && (
+                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                    <div className="px-4 py-2 text-sm text-gray-700 flex items-center justify-between">
+                      <span>Show completed</span>
+                      <Toggle checked={showCompleted} onChange={toggleShowCompleted} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Add Section Button */}
-          <div className="notebook-line flex items-center mb-8">
+          <div className="notebook-line flex items-center mb-4">
             <button
               onClick={addSection}
               className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
@@ -576,7 +653,7 @@ const TodoApp: React.FC = () => {
 
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="space-y-4">
-              {sections.map((section) => (
+              {filteredSections.map((section) => (
                 <div key={section.id} className="relative">
                   {/* Section Header */}
                   <div className="flex items-center justify-between mb-4 group notebook-line">

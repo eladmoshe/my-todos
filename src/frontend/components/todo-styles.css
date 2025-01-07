@@ -18,16 +18,6 @@
   font-size: 1.25rem;
 }
 
-/* Modified notebook line for perfect alignment */
-.notebook-line {
-  min-height: 32px;
-  display: flex;
-  align-items: flex-start;
-  position: relative;
-  padding: 0;
-  margin: 0;
-}
-
 /* Ensure consistent font size and styling for todo items */
 .todo-item-content,
 .todo-input,
@@ -35,7 +25,8 @@
 .todo-text {
   font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   font-size: 1.25rem;
-  line-height: 32px; /* Match the notebook line height */
+  line-height: 32px;
+  /* Match the notebook line height */
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -49,7 +40,8 @@
   transition: all 200ms;
   margin-right: 12px;
   flex-shrink: 0;
-  margin-top: 8px; /* Align with the first line of text */
+  margin-top: 8px;
+  /* Align with the first line of text */
 }
 
 /* Text container for todos */
@@ -61,7 +53,8 @@
   font-size: 1.25rem;
   padding: 0;
   margin: 0;
-  line-height: 32px; /* Match the notebook line height */
+  line-height: 32px;
+  /* Match the notebook line height */
 }
 
 /* Section titles */
@@ -87,18 +80,28 @@ textarea {
   padding: 0;
 }
 
+/* Add this new class for completed todos */
+.todo-completed {
+  text-decoration: line-through;
+  color: #9ca3af;
+  /* A muted gray color */
+}
+
 /* Adjustments for editing state */
 .todo-item-content {
   cursor: text;
-  display: block; /* Change to block to match textarea behavior */
+  display: block;
+  /* Change to block to match textarea behavior */
   flex-grow: 1;
-  padding: 4px 0; /* Add vertical padding */
+  padding: 4px 0;
+  /* Add vertical padding */
   border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
 .todo-item-content:hover {
-  background-color: rgba(59, 130, 246, 0.1); /* Light blue background on hover */
+  background-color: rgba(59, 130, 246, 0.1);
+  /* Light blue background on hover */
 }
 
 .todo-input {
@@ -107,12 +110,15 @@ textarea {
   border: none;
   border-bottom: 1px solid #e5e7eb;
   resize: none;
-  overflow: hidden; /* Hide scrollbar */
+  overflow: hidden;
+  /* Hide scrollbar */
   width: 100%;
   font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   font-size: 1.25rem;
-  line-height: 32px; /* Match the notebook line height */
-  min-height: 32px; /* Ensure minimum height of one line */
+  line-height: 32px;
+  /* Match the notebook line height */
+  min-height: 32px;
+  /* Ensure minimum height of one line */
 }
 
 .todo-input:focus {
@@ -122,7 +128,8 @@ textarea {
 
 /* Timestamp positioning */
 .todo-timestamp {
-  font-family: system-ui, -apple-system, sans-serif; /* Keep timestamp in regular font */
+  font-family: system-ui, -apple-system, sans-serif;
+  /* Keep timestamp in regular font */
   font-size: 0.75rem;
   color: #9ca3af;
   margin-left: 8px;
@@ -171,7 +178,8 @@ textarea {
 
 /* Adjust checkbox positioning */
 .todo-item-container .todo-checkbox {
-  margin-top: 8px; /* Align with the first line of text */
+  margin-top: 8px;
+  /* Align with the first line of text */
 }
 
 /* Style for todo items */
@@ -186,13 +194,15 @@ textarea {
 .todo-link {
   display: inline-flex;
   align-items: center;
-  color: #3b82f6; /* Blue color for links */
+  color: #3b82f6;
+  /* Blue color for links */
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .todo-link:hover {
-  color: #2563eb; /* Darker blue on hover */
+  color: #2563eb;
+  /* Darker blue on hover */
   text-decoration: underline;
 }
 
