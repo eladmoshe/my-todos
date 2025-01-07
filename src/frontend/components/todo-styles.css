@@ -1,71 +1,160 @@
-/* Custom styles for Todo App */
+/* Import Google Fonts - Indie Flower for handwriting style */
+@import url("https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap");
 
 /* Base layout adjustments */
 .todo-app {
-  @apply min-w-[320px];
+  min-width: 320px;
 }
 
 /* Custom styling for the notebook lines */
 .notebook-paper {
   background-image: linear-gradient(#e6e6e6 1px, transparent 1px);
   background-size: 100% 32px;
-  @apply pt-[16px] pb-[16px] px-8;
+  background-position: 0 0;
+  padding: 16px 32px;
 }
 
 /* Align content with notebook lines */
 .notebook-content {
-  @apply leading-[32px];
+  line-height: 32px;
+  font-family: "Indie Flower", cursive;
 }
 
+/* Modified notebook line for perfect alignment */
 .notebook-line {
-  @apply h-[32px] flex items-center;
+  min-height: 32px;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  padding: 0;
+  margin: 0;
+  line-height: 32px;
 }
 
-/* Custom checkbox styling */
+/* Ensure checkbox aligns with text */
 .todo-checkbox {
-  @apply relative w-4 h-4 border-2 border-gray-300 rounded transition-all duration-200 mr-3 flex-shrink-0;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #b0b0b0;
+  border-radius: 4px;
+  transition: all 200ms;
+  margin-right: 12px;
+  flex-shrink: 0;
+  margin-top: 8px; /* Align with first line of text */
 }
 
-/* Custom styling for drag and drop visual feedback */
-.dragging {
-  @apply opacity-50 cursor-grabbing;
+/* Text container for todos */
+.todo-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.25rem;
+  padding: 0;
+  margin: 0;
+  line-height: 32px; /* Match the notebook line height */
 }
 
-/* Remove default focus outline and add custom one */
-:focus {
-  @apply outline-none;
+/* Section titles */
+h1,
+h2 {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  line-height: 32px;
+  margin: 0;
+  padding: 0;
 }
 
-.focus-visible {
-  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+/* Button text */
+button {
+  font-family: "Indie Flower", cursive;
 }
 
-/* Custom scrollbar styling */
-::-webkit-scrollbar {
-  @apply w-2;
+/* Input fields */
+input,
+textarea {
+  font-family: "Indie Flower", cursive;
+  line-height: 32px;
+  margin: 0;
+  padding: 0;
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
+/* Adjustments for editing state */
+.todo-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.25rem;
+  line-height: 32px;
+  padding: 0;
+  margin: 0;
+  resize: none;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 bg-opacity-50 rounded;
+.todo-input:focus {
+  outline: none;
+  border-bottom-color: #3b82f6;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-300 bg-opacity-80;
+/* Timestamp positioning */
+.todo-timestamp {
+  font-family: system-ui, -apple-system, sans-serif; /* Keep timestamp in regular font */
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 200ms;
+  flex-shrink: 0;
+  line-height: 32px;
 }
 
-/* Add this to your existing CSS */
-.add-todo-button {
-  @apply w-4 h-4 bg-blue-500 text-white flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors duration-200 rounded-sm-2 relative;
+.notebook-line:hover .todo-timestamp {
+  opacity: 1;
 }
 
-.add-todo-button::before {
-  content: '+';
-  @apply absolute text-sm font-bold leading-none;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* Add Section/Todo buttons */
+.add-button {
+  color: #3b82f6;
+  font-family: "Indie Flower", cursive;
+  font-size: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 32px;
+  transition: color 200ms;
+}
+
+.add-button:hover {
+  color: #2563eb;
+}
+
+/* New styles for todo item container */
+.todo-item-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* Adjust todo content wrapper */
+.todo-content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  flex-grow: 1;
+}
+
+/* Adjust checkbox positioning */
+.todo-item-container .todo-checkbox {
+  margin-top: 8px; /* Align with the first line of text */
+}
+
+/* Style for todo items */
+.todo-item {
+  font-size: 1.25rem;
+  line-height: 32px;
+  padding: 0;
+  margin: 0;
 }

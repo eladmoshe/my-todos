@@ -7,8 +7,11 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
-import { format, parseISO } from 'date-fns'; // Make sure to install this package: npm install date-fns
-import { ArrowRightOnRectangleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { format, parseISO } from "date-fns"; // Make sure to install this package: npm install date-fns
+import {
+  ArrowRightOnRectangleIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 
 interface Todo {
   id: number;
@@ -38,7 +41,7 @@ const TodoApp: React.FC = () => {
   const formatCreatedAt = (timestamp: string) => {
     // Parse the PostgreSQL timestamp and format it
     const date = parseISO(timestamp);
-    return format(date, 'MMM d, yyyy HH:mm');
+    return format(date, "MMM d, yyyy HH:mm");
   };
 
   useEffect(() => {
@@ -327,6 +330,26 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const autoResizeTextarea = (element: HTMLTextAreaElement) => {
+    element.style.height = "auto";
+    element.style.height = element.scrollHeight + "px";
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    sectionId: number,
+    todoId: number
+  ) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      finishEditingTodo(
+        sectionId,
+        todoId,
+        (e.target as HTMLTextAreaElement).value
+      );
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
@@ -474,7 +497,9 @@ const TodoApp: React.FC = () => {
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
+                        className={`${
+                          snapshot.isDraggingOver ? "bg-blue-50" : ""
+                        } space-y-2`}
                       >
                         {section.todos.map((todo, index) => (
                           <Draggable
@@ -487,58 +512,82 @@ const TodoApp: React.FC = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`notebook-line flex items-center justify-between
+                                className={`notebook-line py-2 px-2 rounded
                                            hover:bg-blue-50 transition-colors duration-200 group
-                                           ${snapshot.isDragging ? "bg-blue-100 shadow-md" : ""}`}
+                                           ${
+                                             snapshot.isDragging
+                                               ? "bg-blue-100 shadow-md"
+                                               : ""
+                                           }`}
                               >
-                                <div className="flex items-center flex-grow">
-                                  <input
-                                    type="checkbox"
-                                    onChange={() => checkTodo(section.id, todo.id)}
-                                    className="todo-checkbox"
-                                  />
-                                  {editingTodoId === todo.id ? (
+                                <div className="todo-item-container">
+                                  <div className="todo-content-wrapper">
                                     <input
-                                      type="text"
-                                      value={todo.text}
-                                      onChange={(e) => {
-                                        const newText = e.target.value;
-                                        setSections(
-                                          sections.map((s) =>
-                                            s.id === section.id
-                                              ? {
-                                                  ...s,
-                                                  todos: s.todos.map((t) =>
-                                                    t.id === todo.id
-                                                      ? { ...t, text: newText }
-                                                      : t
-                                                  ),
-                                                }
-                                              : s
-                                          )
-                                        );
-                                      }}
-                                      onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
-                                      onKeyPress={(e) => {
-                                        if (e.key === "Enter") {
-                                          finishEditingTodo(section.id, todo.id, todo.text);
-                                        }
-                                      }}
-                                      className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
-                                      autoFocus
+                                      type="checkbox"
+                                      onChange={() =>
+                                        checkTodo(section.id, todo.id)
+                                      }
+                                      className="todo-checkbox"
                                     />
-                                  ) : (
-                                    <span
-                                      className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
-                                      onClick={() => startEditingTodo(todo.id)}
-                                    >
-                                      {todo.text}
-                                    </span>
-                                  )}
+                                    <div className="flex-grow">
+                                      {editingTodoId === todo.id ? (
+                                        <textarea
+                                          value={todo.text}
+                                          onChange={(e) => {
+                                            const newText = e.target.value;
+                                            setSections(
+                                              sections.map((s) =>
+                                                s.id === section.id
+                                                  ? {
+                                                      ...s,
+                                                      todos: s.todos.map((t) =>
+                                                        t.id === todo.id
+                                                          ? {
+                                                              ...t,
+                                                              text: newText,
+                                                            }
+                                                          : t
+                                                      ),
+                                                    }
+                                                  : s
+                                              )
+                                            );
+                                            autoResizeTextarea(e.target);
+                                          }}
+                                          onBlur={() =>
+                                            finishEditingTodo(
+                                              section.id,
+                                              todo.id,
+                                              todo.text
+                                            )
+                                          }
+                                          onKeyDown={(e) =>
+                                            handleKeyDown(
+                                              e,
+                                              section.id,
+                                              todo.id
+                                            )
+                                          }
+                                          className="todo-input"
+                                          rows={1}
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        <span
+                                          className="todo-text cursor-pointer"
+                                          onClick={() =>
+                                            startEditingTodo(todo.id)
+                                          }
+                                        >
+                                          {todo.text}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="todo-timestamp">
+                                    {formatCreatedAt(todo.created_at)}
+                                  </span>
                                 </div>
-                                <span className="text-xs text-gray-400 hidden group-hover:inline-block ml-2">
-                                  {formatCreatedAt(todo.created_at)}
-                                </span>
                               </div>
                             )}
                           </Draggable>
@@ -573,7 +622,7 @@ const TodoApp: React.FC = () => {
                         onClick={() => addEmptyTodo(section.id)}
                         className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
                       >
-                        + Add Todo
+                        + Add
                       </button>
                     </div>
                   )}
