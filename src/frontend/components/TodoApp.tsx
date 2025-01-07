@@ -108,14 +108,35 @@ const TodoApp: React.FC = () => {
   };
 
   const deleteSection = async (sectionId: number) => {
-    const { error } = await supabase
-      .from("sections")
-      .delete()
-      .eq("id", sectionId);
-    if (error) {
-      console.error("Error deleting section:", error);
-    } else {
+    const sectionToDelete = sections.find(section => section.id === sectionId);
+    if (!sectionToDelete) return;
+
+    if (sectionToDelete.todos.length > 0) {
+      const confirmDelete = window.confirm(
+        `This section contains ${sectionToDelete.todos.length} todo item(s). Are you sure you want to delete this section and all its todos?`
+      );
+      if (!confirmDelete) return;
+    }
+
+    try {
+      // Delete all todos in the section
+      await supabase
+        .from("todos")
+        .delete()
+        .eq("section_id", sectionId);
+
+      // Delete the section
+      const { error } = await supabase
+        .from("sections")
+        .delete()
+        .eq("id", sectionId);
+
+      if (error) throw error;
+
       setSections(sections.filter((section) => section.id !== sectionId));
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      // You might want to show an error message to the user here
     }
   };
 
