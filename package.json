@@ -7,9 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
-    "start:frontend": "react-scripts start",
-    "start:backend": "node --loader ts-node/esm src/backend/server.ts",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -66,5 +64,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+}
 }
