@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import './todo-styles.css';
 import supabase, { signIn, signUp } from '../../supabaseClient';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 interface Todo {
-  id: string;
+  id: number;
   text: string;
 }
 
 interface TodoSection {
-  id: string;
+  id: number;
   title: string;
   todos: Todo[];
 }
 
 const TodoApp: React.FC = () => {
   const [sections, setSections] = useState<TodoSection[]>([]);
-  const [draggedTodo, setDraggedTodo] = useState<{todoId: string, sectionId: string} | null>(null);
-  const [draggedSection, setDraggedSection] = useState<string | null>(null);
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -85,7 +85,7 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const deleteSection = async (sectionId: string) => {
+  const deleteSection = async (sectionId: number) => {
     const { error } = await supabase
       .from('sections')
       .delete()
@@ -97,7 +97,7 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const addTodo = async (sectionId: string, todoText: string) => {
+  const addTodo = async (sectionId: number, todoText: string) => {
     const { data, error } = await supabase
       .from('todos')
       .insert({ text: todoText, section_id: sectionId })
@@ -114,7 +114,7 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const checkTodo = async (sectionId: string, todoId: string) => {
+  const checkTodo = async (sectionId: number, todoId: number) => {
     const { error } = await supabase
       .from('todos')
       .delete()
@@ -130,101 +130,51 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const handleTodoDragStart = (e: React.DragEvent, todoId: string, sectionId: string) => {
-    setDraggedTodo({ todoId, sectionId });
-    e.dataTransfer.setData('text/plain', todoId);
-    e.currentTarget.classList.add('opacity-50');
-  };
+  const onDragEnd = async (result: DropResult) => {
+    const { source, destination } = result;
 
-  const handleTodoDragEnd = (e: React.DragEvent) => {
-    e.currentTarget.classList.remove('opacity-50');
-    setDraggedTodo(null);
-  };
+    // If dropped outside the list
+    if (!destination) {
+      return;
+    }
 
-  const handleTodoDrop = async (e: React.DragEvent, targetSectionId: string) => {
-    e.preventDefault();
-    if (!draggedTodo) return;
+    // If dropped in the same position
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
 
-    const { todoId, sectionId: sourceSectionId } = draggedTodo;
-    if (sourceSectionId === targetSectionId) return;
+    const sourceSection = sections.find(s => s.id === parseInt(source.droppableId, 10));
+    const destSection = sections.find(s => s.id === parseInt(destination.droppableId, 10));
 
-    const sourceSection = sections.find(s => s.id === sourceSectionId);
-    const todo = sourceSection?.todos.find(t => t.id === todoId);
-    
-    if (todo) {
-      const { error } = await supabase
-        .from('todos')
-        .update({ section_id: targetSectionId })
-        .eq('id', todoId);
-      
-      if (error) {
-        console.error('Error moving todo:', error);
-      } else {
-        setSections(sections.map(section => {
-          if (section.id === sourceSectionId) {
-            return {
-              ...section,
-              todos: section.todos.filter(t => t.id !== todoId)
-            };
-          }
-          if (section.id === targetSectionId) {
-            return {
-              ...section,
-              todos: [...section.todos, todo]
-            };
-          }
-          return section;
-        }));
-      }
+    if (!sourceSection || !destSection) {
+      return;
+    }
+
+    const newSections = [...sections];
+    const [reorderedTodo] = sourceSection.todos.splice(source.index, 1);
+    destSection.todos.splice(destination.index, 0, reorderedTodo);
+
+    setSections(newSections);
+
+    // Update the database
+    const { error } = await supabase
+      .from('todos')
+      .update({ section_id: parseInt(destination.droppableId, 10) })
+      .eq('id', reorderedTodo.id);
+
+    if (error) {
+      console.error('Error updating todo:', error);
     }
   };
 
-  const handleSectionDragStart = (e: React.DragEvent, sectionId: string) => {
-    setDraggedSection(sectionId);
-    e.dataTransfer.setData('text/plain', sectionId);
-    e.currentTarget.classList.add('opacity-50');
-  };
-
-  const handleSectionDragEnd = (e: React.DragEvent) => {
-    e.currentTarget.classList.remove('opacity-50');
-    setDraggedSection(null);
-  };
-
-  const handleSectionDragOver = async (e: React.DragEvent, targetSectionId: string) => {
-    e.preventDefault();
-    if (!draggedSection || draggedSection === targetSectionId) return;
-
-    const draggedIndex = sections.findIndex(s => s.id === draggedSection);
-    const targetIndex = sections.findIndex(s => s.id === targetSectionId);
-    
-    if (draggedIndex !== targetIndex) {
-      const newSections = [...sections];
-      const [draggedItem] = newSections.splice(draggedIndex, 1);
-      newSections.splice(targetIndex, 0, draggedItem);
-
-      // Update the order in the database
-      const updates = newSections.map((section, index) => ({
-        id: section.id,
-        order: index
-      }));
-
-      const { error } = await supabase
-        .from('sections')
-        .upsert(updates, { onConflict: 'id' });
-
-      if (error) {
-        console.error('Error reordering sections:', error);
-      } else {
-        setSections(newSections);
-      }
-    }
-  };
-
-  const startEditingSection = (sectionId: string) => {
+  const startEditingSection = (sectionId: number) => {
     setEditingSectionId(sectionId);
   };
 
-  const finishEditingSection = async (sectionId: string, newTitle: string) => {
+  const finishEditingSection = async (sectionId: number, newTitle: string) => {
     const { error } = await supabase
       .from('sections')
       .update({ title: newTitle })
@@ -238,6 +188,33 @@ const TodoApp: React.FC = () => {
       ));
     }
     setEditingSectionId(null);
+  };
+
+  const startEditingTodo = (todoId: number) => {
+    setEditingTodoId(todoId);
+  };
+
+  const finishEditingTodo = async (sectionId: number, todoId: number, newText: string) => {
+    const { error } = await supabase
+      .from('todos')
+      .update({ text: newText })
+      .eq('id', todoId);
+
+    if (error) {
+      console.error('Error updating todo:', error);
+    } else {
+      setSections(sections.map(section =>
+        section.id === sectionId
+          ? {
+              ...section,
+              todos: section.todos.map(todo =>
+                todo.id === todoId ? { ...todo, text: newText } : todo
+              )
+            }
+          : section
+      ));
+    }
+    setEditingTodoId(null);
   };
 
   const handleAuth = async (e: React.FormEvent, isSignUp: boolean) => {
@@ -323,7 +300,7 @@ const TodoApp: React.FC = () => {
             {/* Header area */}
             <div className="relative mb-12 flex justify-between items-center">
               <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
-                My Notes
+                Elad's Notes
               </h1>
               <button onClick={handleSignOut} className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Sign Out</button>
             </div>
@@ -338,115 +315,152 @@ const TodoApp: React.FC = () => {
               Add Section
             </button>
 
-            {/* Sections Container */}
-            <div className="space-y-10 relative">
-              {sections.map((section) => (
-                <div
-                  key={section.id}
-                  draggable
-                  onDragStart={(e) => handleSectionDragStart(e, section.id)}
-                  onDragEnd={handleSectionDragEnd}
-                  onDragOver={(e) => handleSectionDragOver(e, section.id)}
-                  className="relative cursor-move group"
-                >
-                  {/* Section Header */}
-                  <div className="flex items-center justify-between mb-4 group">
-                    {editingSectionId === section.id ? (
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="space-y-10 relative">
+                {sections.map((section) => (
+                  <div
+                    key={section.id}
+                    className="relative group"
+                  >
+                    {/* Section Header */}
+                    <div className="flex items-center justify-between mb-4 group">
+                      {editingSectionId === section.id ? (
+                        <input
+                          type="text"
+                          value={section.title}
+                          onChange={(e) => {
+                            const newTitle = e.target.value;
+                            setSections(sections.map(s =>
+                              s.id === section.id ? { ...s, title: newTitle } : s
+                            ));
+                          }}
+                          onBlur={() => finishEditingSection(section.id, section.title)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              finishEditingSection(section.id, section.title);
+                            }
+                          }}
+                          className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <h2 
+                          className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
+                          onClick={() => startEditingSection(section.id)}
+                        >
+                          {section.title}
+                        </h2>
+                      )}
+                      <button 
+                        onClick={() => deleteSection(section.id)}
+                        className="text-red-400 hover:text-red-500 transition-colors duration-200
+                                 opacity-0 group-hover:opacity-100 text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    {/* Todos Container */}
+                    <Droppable droppableId={section.id.toString()} type="todo">
+                      {(provided, snapshot) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className={`space-y-3 ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                        >
+                          {section.todos.map((todo, index) => (
+                            <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`flex items-center space-x-4 py-1.5 group/todo
+                                             hover:bg-blue-50 rounded px-2 transition-colors duration-200
+                                             ${snapshot.isDragging ? 'bg-blue-100 shadow-md' : ''}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    onChange={() => checkTodo(section.id, todo.id)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-500 
+                                             focus:ring-blue-500 cursor-pointer"
+                                  />
+                                  {editingTodoId === todo.id ? (
+                                    <input
+                                      type="text"
+                                      value={todo.text}
+                                      onChange={(e) => {
+                                        const newText = e.target.value;
+                                        setSections(sections.map(s =>
+                                          s.id === section.id
+                                            ? {
+                                                ...s,
+                                                todos: s.todos.map(t =>
+                                                  t.id === todo.id ? { ...t, text: newText } : t
+                                                )
+                                              }
+                                            : s
+                                        ));
+                                      }}
+                                      onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
+                                      onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                          finishEditingTodo(section.id, todo.id, todo.text);
+                                        }
+                                      }}
+                                      className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <span
+                                      className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
+                                      onClick={() => startEditingTodo(todo.id)}
+                                    >
+                                      {todo.text}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+
+                    {/* Add Todo Form */}
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const input = e.currentTarget.elements.namedItem('todo') as HTMLInputElement;
+                        if (input.value.trim()) {
+                          addTodo(section.id, input.value);
+                          input.value = '';
+                        }
+                      }}
+                      className="mt-4 flex space-x-2"
+                    >
                       <input
                         type="text"
-                        value={section.title}
-                        onChange={(e) => {
-                          const newTitle = e.target.value;
-                          setSections(sections.map(s =>
-                            s.id === section.id ? { ...s, title: newTitle } : s
-                          ));
-                        }}
-                        onBlur={() => finishEditingSection(section.id, section.title)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            finishEditingSection(section.id, section.title);
-                          }
-                        }}
-                        className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
-                        autoFocus
+                        name="todo"
+                        placeholder="Add new todo"
+                        className="flex-1 rounded-lg border-gray-200 shadow-sm 
+                                 focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                                 placeholder:text-gray-400 text-lg py-2"
                       />
-                    ) : (
-                      <h2 
-                        className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
-                        onClick={() => startEditingSection(section.id)}
+                      <button 
+                        type="submit"
+                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
+                                 transition-colors duration-200 shadow-sm hover:shadow
+                                 text-sm font-medium tracking-wide"
                       >
-                        {section.title}
-                      </h2>
-                    )}
-                    <button 
-                      onClick={() => deleteSection(section.id)}
-                      className="text-red-400 hover:text-red-500 transition-colors duration-200
-                               opacity-0 group-hover:opacity-100 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+                        Add
+                      </button>
+                    </form>
                   </div>
-
-                  {/* Todos Container */}
-                  <div 
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => handleTodoDrop(e, section.id)}
-                    className="space-y-3"
-                  >
-                    {section.todos.map((todo) => (
-                      <div
-                        key={todo.id}
-                        draggable
-                        onDragStart={(e) => handleTodoDragStart(e, todo.id, section.id)}
-                        onDragEnd={handleTodoDragEnd}
-                        className="flex items-center space-x-4 py-1.5 group/todo cursor-move
-                                 hover:bg-blue-50 rounded px-2 transition-colors duration-200"
-                      >
-                        <input
-                          type="checkbox"
-                          onChange={() => checkTodo(section.id, todo.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-500 
-                                   focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className="text-gray-600 font-normal text-lg">
-                          {todo.text}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add Todo Form */}
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const input = e.currentTarget.elements.namedItem('todo') as HTMLInputElement;
-                      if (input.value.trim()) {
-                        addTodo(section.id, input.value);
-                        input.value = '';
-                      }
-                    }}
-                    className="mt-4 flex space-x-2"
-                  >
-                    <input
-                      type="text"
-                      name="todo"
-                      placeholder="Add new todo"
-                      className="flex-1 rounded-lg border-gray-200 shadow-sm 
-                               focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                               placeholder:text-gray-400 text-lg py-2"
-                    />
-                    <button 
-                      type="submit"
-                      className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
-                               transition-colors duration-200 shadow-sm hover:shadow
-                               text-sm font-medium tracking-wide"
-                    >
-                      Add
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </DragDropContext>
           </div>
         </div>
       </div>
