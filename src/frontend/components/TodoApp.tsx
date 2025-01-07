@@ -7,10 +7,12 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
+import { format, parseISO } from 'date-fns'; // Make sure to install this package: npm install date-fns
 
 interface Todo {
   id: number;
   text: string;
+  created_at: string; // This is the PostgreSQL timestamp string
 }
 
 interface TodoSection {
@@ -31,6 +33,12 @@ const TodoApp: React.FC = () => {
   const [newTodoSectionId, setNewTodoSectionId] = useState<number | null>(null);
   const [newTodoText, setNewTodoText] = useState<string>("");
   const newTodoInputRef = useRef<HTMLInputElement>(null);
+
+  const formatCreatedAt = (timestamp: string) => {
+    // Parse the PostgreSQL timestamp and format it
+    const date = parseISO(timestamp);
+    return format(date, 'MMM d, yyyy HH:mm');
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -411,7 +419,7 @@ const TodoApp: React.FC = () => {
             <DragDropContext onDragEnd={onDragEnd}>
               <div className="space-y-4">
                 {sections.map((section) => (
-                  <div key={section.id} className="relative group">
+                  <div key={section.id} className="relative">
                     {/* Section Header */}
                     <div className="flex items-center justify-between mb-4 group notebook-line">
                       {editingSectionId === section.id ? (
@@ -462,9 +470,7 @@ const TodoApp: React.FC = () => {
                         <div
                           {...provided.droppableProps}
                           ref={provided.innerRef}
-                          className={`${
-                            snapshot.isDraggingOver ? "bg-blue-50" : ""
-                          }`}
+                          className={`${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
                         >
                           {section.todos.map((todo, index) => (
                             <Draggable
@@ -477,69 +483,58 @@ const TodoApp: React.FC = () => {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`notebook-line flex items-center
-                                             hover:bg-blue-50 transition-colors duration-200
-                                             ${
-                                               snapshot.isDragging
-                                                 ? "bg-blue-100 shadow-md"
-                                                 : ""
-                                             }`}
+                                  className={`notebook-line flex items-center justify-between
+                                             hover:bg-blue-50 transition-colors duration-200 group
+                                             ${snapshot.isDragging ? "bg-blue-100 shadow-md" : ""}`}
                                 >
-                                  <input
-                                    type="checkbox"
-                                    onChange={() =>
-                                      checkTodo(section.id, todo.id)
-                                    }
-                                    className="todo-checkbox"
-                                  />
-                                  {editingTodoId === todo.id ? (
+                                  <div className="flex items-center flex-grow">
                                     <input
-                                      type="text"
-                                      value={todo.text}
-                                      onChange={(e) => {
-                                        const newText = e.target.value;
-                                        setSections(
-                                          sections.map((s) =>
-                                            s.id === section.id
-                                              ? {
-                                                  ...s,
-                                                  todos: s.todos.map((t) =>
-                                                    t.id === todo.id
-                                                      ? { ...t, text: newText }
-                                                      : t
-                                                  ),
-                                                }
-                                              : s
-                                          )
-                                        );
-                                      }}
-                                      onBlur={() =>
-                                        finishEditingTodo(
-                                          section.id,
-                                          todo.id,
-                                          todo.text
-                                        )
-                                      }
-                                      onKeyPress={(e) => {
-                                        if (e.key === "Enter") {
-                                          finishEditingTodo(
-                                            section.id,
-                                            todo.id,
-                                            todo.text
-                                          );
-                                        }
-                                      }}
-                                      className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
-                                      autoFocus
+                                      type="checkbox"
+                                      onChange={() => checkTodo(section.id, todo.id)}
+                                      className="todo-checkbox"
                                     />
-                                  ) : (
-                                    <span
-                                      className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
-                                      onClick={() => startEditingTodo(todo.id)}
-                                    >
-                                      {todo.text}
-                                    </span>
-                                  )}
+                                    {editingTodoId === todo.id ? (
+                                      <input
+                                        type="text"
+                                        value={todo.text}
+                                        onChange={(e) => {
+                                          const newText = e.target.value;
+                                          setSections(
+                                            sections.map((s) =>
+                                              s.id === section.id
+                                                ? {
+                                                    ...s,
+                                                    todos: s.todos.map((t) =>
+                                                      t.id === todo.id
+                                                        ? { ...t, text: newText }
+                                                        : t
+                                                    ),
+                                                  }
+                                                : s
+                                            )
+                                          );
+                                        }}
+                                        onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
+                                        onKeyPress={(e) => {
+                                          if (e.key === "Enter") {
+                                            finishEditingTodo(section.id, todo.id, todo.text);
+                                          }
+                                        }}
+                                        className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <span
+                                        className="text-gray-600 font-normal text-lg cursor-pointer flex-1"
+                                        onClick={() => startEditingTodo(todo.id)}
+                                      >
+                                        {todo.text}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-gray-400 hidden group-hover:inline-block ml-2">
+                                    {formatCreatedAt(todo.created_at)}
+                                  </span>
                                 </div>
                               )}
                             </Draggable>
