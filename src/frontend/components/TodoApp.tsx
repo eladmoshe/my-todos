@@ -18,6 +18,7 @@ const TodoApp: React.FC = () => {
   ]);
   const [draggedTodo, setDraggedTodo] = useState<{todoId: string, sectionId: string} | null>(null);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   const addSection = () => {
     const newSection: TodoSection = {
@@ -117,6 +118,17 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const startEditingSection = (sectionId: string) => {
+    setEditingSectionId(sectionId);
+  };
+
+  const finishEditingSection = (sectionId: string, newTitle: string) => {
+    setSections(sections.map(section =>
+      section.id === sectionId ? { ...section, title: newTitle } : section
+    ));
+    setEditingSectionId(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
       <div className="max-w-3xl mx-auto">
@@ -183,9 +195,33 @@ const TodoApp: React.FC = () => {
                 >
                   {/* Section Header */}
                   <div className="flex items-center justify-between mb-4 group">
-                    <h2 className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors">
-                      {section.title}
-                    </h2>
+                    {editingSectionId === section.id ? (
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => {
+                          const newTitle = e.target.value;
+                          setSections(sections.map(s =>
+                            s.id === section.id ? { ...s, title: newTitle } : s
+                          ));
+                        }}
+                        onBlur={() => finishEditingSection(section.id, section.title)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            finishEditingSection(section.id, section.title);
+                          }
+                        }}
+                        className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <h2 
+                        className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
+                        onClick={() => startEditingSection(section.id)}
+                      >
+                        {section.title}
+                      </h2>
+                    )}
                     <button 
                       onClick={() => deleteSection(section.id)}
                       className="text-red-400 hover:text-red-500 transition-colors duration-200
