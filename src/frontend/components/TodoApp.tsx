@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import "./todo-styles.css";
-import supabase, { signIn, signUp } from "../../supabaseClient";
+import supabase, { signUp, signIn } from "../../supabaseClient";
 import {
   openLocalDatabase,
   getLocalSections,
@@ -124,6 +124,7 @@ const shortenUrl = (url: string, maxLength: number = 50) => {
 };
 
 const TodoApp: React.FC = () => {
+  console.log("Rendering TodoApp component");
   const [sections, setSections] = useState<TodoSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
@@ -209,49 +210,47 @@ const TodoApp: React.FC = () => {
     const initializeApp = async () => {
       await openLocalDatabase();
       if (navigator.onLine) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          if (error) throw error;
+          setUser(data?.user || null);
+        } catch (error) {
+          console.error("Error fetching user:", error);
+          setUser(null);
+        }
       }
-      await loadData();
     };
 
-    const handleOnline = () => {
-      setIsOffline(false);
-      syncData();
-    };
+    let authListener: { data: { subscription: { unsubscribe: () => void } } } | null = null;
 
-    const handleOffline = () => {
-      setIsOffline(true);
-    };
+    try {
+      authListener = supabase.auth.onAuthStateChange((event, session) => {
+        setUser(session?.user || null);
+      });
+    } catch (error) {
+      console.error("Error setting up auth listener:", error);
+    }
 
     initializeApp();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadData();
-        }
-      }
-    );
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
     return () => {
-      authListener.subscription.unsubscribe();
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      if (authListener?.data?.subscription?.unsubscribe) {
+        authListener.data.subscription.unsubscribe();
+      }
     };
-  }, [syncData]);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
     const localSections = await getLocalSections();
     const localTodos = await getLocalTodos();
 
-    if (localSections.length > 0 && localTodos.length > 0) {
+    if (localSections?.length > 0 && localTodos?.length > 0) {
       setSections(combineData(localSections, localTodos));
     } else if (navigator.onLine) {
       await fetchSections();
@@ -266,6 +265,8 @@ const TodoApp: React.FC = () => {
   };
 
   const fetchSections = async () => {
+    if (!user) return;
+
     const { data: sectionsData, error: sectionsError } = await supabase
       .from("sections")
       .select("*")
@@ -718,13 +719,11 @@ const TodoApp: React.FC = () => {
     );
   };
 
-  if (!user && !isOffline) {
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
+      <div data-testid="todo-app" className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
-          <h2 className="text-2xl font-serif text-gray-800 mb-6">
-            Sign Up or Sign In
-          </h2>
+          <h2 className="text-2xl font-serif text-gray-800 mb-6">Sign Up or Sign In</h2>
           <form onSubmit={(e) => handleAuth(e, true)} className="space-y-4">
             <input
               type="email"
@@ -824,7 +823,10 @@ const TodoApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
+    <div
+      data-testid="todo-app"
+      className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6"
+    >
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
         {/* Notebook holes */}
         <div className="absolute left-4 top-4 bottom-4 flex flex-col justify-around">
