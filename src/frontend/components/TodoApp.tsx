@@ -37,6 +37,56 @@ interface TodoSection {
   todos: Todo[];
 }
 
+const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPreview = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log('Fetching preview for URL:', url);
+        const response = await fetch(`http://localhost:3001/api/slack-preview-service?url=${encodeURIComponent(url)}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Received data:', data);
+        setPreview(data.preview);
+      } catch (error) {
+        console.error('Error fetching Slack preview:', error);
+        setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPreview();
+  }, [url]);
+
+  if (isLoading) return <div>Loading preview...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!preview) return null;
+
+  return (
+    <div className="bg-white border border-gray-200 p-4 rounded-md shadow-lg max-w-md">
+      <p className="text-sm text-gray-600">{preview}</p>
+    </div>
+  );
+};
+
+interface SlackPreviewProps {
+  url: string;
+}
+
 const TodoApp: React.FC = () => {
   const [sections, setSections] = useState<TodoSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
@@ -97,8 +147,10 @@ const TodoApp: React.FC = () => {
     return parts.map((part, index) => {
       if (part.match(urlRegex)) {
         const shortenedUrl = shortenUrl(part);
+        const isSlackUrl = part.includes('slack.com');
+
         return (
-          <React.Fragment key={index}>
+          <span key={index} className="relative group">
             <ChainIcon />
             <a
               href={part}
@@ -109,7 +161,12 @@ const TodoApp: React.FC = () => {
             >
               {shortenedUrl}
             </a>
-          </React.Fragment>
+            {isSlackUrl && (
+              <div className="absolute z-10 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <SlackPreview url={part} />
+              </div>
+            )}
+          </span>
         );
       }
       return part;

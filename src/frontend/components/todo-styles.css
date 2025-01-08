@@ -209,3 +209,11 @@ textarea {
 .todo-link svg {
   margin-right: 4px;
 }
+
+.group:hover .absolute {
+  display: block;
+}
+
+.absolute {
+  display: none;
+}
