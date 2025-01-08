@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import "./todo-styles.css";
 import supabase, { signIn, signUp } from "../../supabaseClient";
+import { openLocalDatabase, getLocalSections, getLocalTodos, saveLocalSection, saveLocalTodo, deleteLocalSection, deleteLocalTodo } from '../../utils/localDatabase';
 import {
   DragDropContext,
   Droppable,
@@ -15,6 +16,7 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 // Remove the import for Switch from @headlessui/react
+import { User } from '@supabase/supabase-js';
 
 const ChainIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1 mb-1">
@@ -47,19 +49,11 @@ const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
       setIsLoading(true);
       setError(null);
       try {
-        console.log('Fetching preview for URL:', url);
-        const response = await fetch(`http://localhost:3001/api/slack-preview-service?url=${encodeURIComponent(url)}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        console.log('Response status:', response.status);
+        const response = await fetch(`/api/slack-preview?url=${encodeURIComponent(url)}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('Received data:', data);
         setPreview(data.preview);
       } catch (error) {
         console.error('Error fetching Slack preview:', error);
@@ -87,6 +81,23 @@ interface SlackPreviewProps {
   url: string;
 }
 
+const shortenUrl = (url: string, maxLength: number = 50) => {
+  // Remove the protocol (http:// or https://)
+  let displayUrl = url.replace(/^https?:\/\//, '');
+  
+  if (displayUrl.length <= maxLength) return displayUrl;
+  
+  // Calculate lengths
+  const ellipsis = '...';
+  const frontLength = Math.ceil((maxLength - ellipsis.length) / 2);
+  const backLength = Math.floor((maxLength - ellipsis.length) / 2);
+  
+  // Truncate the middle
+  return displayUrl.substring(0, frontLength) + 
+         ellipsis + 
+         displayUrl.substring(displayUrl.length - backLength);
+};
+
 const TodoApp: React.FC = () => {
   const [sections, setSections] = useState<TodoSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
@@ -103,123 +114,94 @@ const TodoApp: React.FC = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
-        setIsFiltersOpen(false);
+    const initializeApp = async () => {
+      await openLocalDatabase();
+      if (navigator.onLine) {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
       }
+      await loadData();
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+    const handleOnline = () => {
+      setIsOffline(false);
+      syncData();
     };
-  }, []);
 
-  const formatCreatedAt = (timestamp: string) => {
-    // Parse the PostgreSQL timestamp and format it
-    const date = parseISO(timestamp);
-    return format(date, "MMM d, yyyy HH:mm");
-  };
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
 
-  const shortenUrl = (url: string, maxLength: number = 50) => {
-    // Remove the protocol (http:// or https://)
-    let displayUrl = url.replace(/^https?:\/\//, '');
-    
-    if (displayUrl.length <= maxLength) return displayUrl;
-    
-    // Calculate lengths
-    const ellipsis = '...';
-    const frontLength = Math.ceil((maxLength - ellipsis.length) / 2);
-    const backLength = Math.floor((maxLength - ellipsis.length) / 2);
-    
-    // Truncate the middle
-    return displayUrl.substring(0, frontLength) + 
-           ellipsis + 
-           displayUrl.substring(displayUrl.length - backLength);
-  };
+    initializeApp();
 
-  const renderTextWithLinks = (text: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-
-    return parts.map((part, index) => {
-      if (part.match(urlRegex)) {
-        const shortenedUrl = shortenUrl(part);
-        const isSlackUrl = part.includes('slack.com');
-
-        return (
-          <span key={index} className="relative group">
-            <ChainIcon />
-            <a
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="todo-link"
-              title={part}
-            >
-              {shortenedUrl}
-            </a>
-            {isSlackUrl && (
-              <div className="absolute z-10 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <SlackPreview url={part} />
-              </div>
-            )}
-          </span>
-        );
-      }
-      return part;
-    });
-  };
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await loadData();
+      }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
+      authListener.subscription.unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      fetchSections();
+  const loadData = async () => {
+    const localSections = await getLocalSections();
+    const localTodos = await getLocalTodos();
+
+    if (localSections.length > 0 && localTodos.length > 0) {
+      setSections(combineData(localSections, localTodos));
+    } else if (navigator.onLine) {
+      await fetchSections();
     }
-  }, [user]);
+  };
+
+  const combineData = (sections: any[], todos: any[]): TodoSection[] => {
+    return sections.map(section => ({
+      ...section,
+      todos: todos.filter(todo => todo.section_id === section.id)
+    }));
+  };
 
   const fetchSections = async () => {
-    const { data, error } = await supabase
+    const { data: sectionsData, error: sectionsError } = await supabase
       .from("sections")
       .select("*")
       .order("order");
-    if (error) {
-      console.error("Error fetching sections:", error);
-    } else {
-      const sectionsWithTodos = await Promise.all(
-        data.map(async (section) => {
-          const { data: todos, error: todosError } = await supabase
-            .from("todos")
-            .select("*")
-            .eq("section_id", section.id)
-            .order("id");
-          if (todosError) {
-            console.error("Error fetching todos:", todosError);
-            return { ...section, todos: [] };
-          }
-          return { ...section, todos };
-        })
-      );
-      setSections(sectionsWithTodos);
+
+    if (sectionsError) {
+      console.error("Error fetching sections:", sectionsError);
+      return;
+    }
+
+    const { data: todosData, error: todosError } = await supabase
+      .from("todos")
+      .select("*")
+      .order("id");
+
+    if (todosError) {
+      console.error("Error fetching todos:", todosError);
+      return;
+    }
+
+    const combinedData = combineData(sectionsData, todosData);
+    setSections(combinedData);
+
+    // Save fetched data to local storage
+    for (const section of sectionsData) {
+      await saveLocalSection(section);
+    }
+    for (const todo of todosData) {
+      await saveLocalTodo(todo);
     }
   };
 
@@ -428,13 +410,15 @@ const TodoApp: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { user, error } = isSignUp
+      const { user: authUser, error } = isSignUp
         ? await signUp(email, password)
         : await signIn(email, password);
       if (error) {
         setError(error.message);
       } else {
-        console.log(`${isSignUp ? "Signed up" : "Signed in"}:`, user);
+        console.log(`${isSignUp ? "Signed up" : "Signed in"}:`, authUser);
+        setUser(authUser);
+        await loadData();
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
@@ -445,7 +429,12 @@ const TodoApp: React.FC = () => {
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) console.error("Error signing out:", error);
+    if (error) {
+      console.error('Error signing out:', error);
+    } else {
+      setUser(null);
+      setSections([]);
+    }
   };
 
   const addEmptyTodo = (sectionId: number) => {
@@ -541,6 +530,30 @@ const TodoApp: React.FC = () => {
     }
   }, [editingTodoId]);
 
+  const formatCreatedAt = (timestamp: string) => {
+    return format(parseISO(timestamp), "MMM d, yyyy 'at' h:mm a");
+  };
+
+  const renderTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <React.Fragment key={index}>
+            <a href={part} target="_blank" rel="noopener noreferrer" className="todo-link">
+              <ChainIcon />
+              {shortenUrl(part)}
+            </a>
+            <SlackPreview url={part} />
+          </React.Fragment>
+        );
+      }
+      return part;
+    });
+  };
+
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
     return (
       <div className={`todo-item-container ${todo.completed ? 'opacity-50' : ''}`}>
@@ -579,7 +592,7 @@ const TodoApp: React.FC = () => {
     );
   };
 
-  if (!user) {
+  if (!user && !isOffline) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
@@ -674,6 +687,64 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const syncData = async () => {
+    if (isOffline) return;
+
+    const localSections = await getLocalSections();
+    const localTodos = await getLocalTodos();
+
+    // Sync sections
+    for (const localSection of localSections) {
+      const { data: serverSection, error } = await supabase
+        .from("sections")
+        .select("*")
+        .eq("id", localSection.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching server section:", error);
+        continue;
+      }
+
+      if (!serverSection || new Date(localSection.last_edited) > new Date(serverSection.last_edited)) {
+        const { error: upsertError } = await supabase
+          .from("sections")
+          .upsert(localSection, { onConflict: 'id' });
+
+        if (upsertError) console.error("Error syncing section:", upsertError);
+      } else {
+        await saveLocalSection(serverSection);
+      }
+    }
+
+    // Sync todos (similar to sections)
+    for (const localTodo of localTodos) {
+      const { data: serverTodo, error } = await supabase
+        .from("todos")
+        .select("*")
+        .eq("id", localTodo.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching server todo:", error);
+        continue;
+      }
+
+      if (!serverTodo || new Date(localTodo.last_edited) > new Date(serverTodo.last_edited)) {
+        const { error: upsertError } = await supabase
+          .from("todos")
+          .upsert(localTodo, { onConflict: 'id' });
+
+        if (upsertError) console.error("Error syncing todo:", upsertError);
+      } else {
+        await saveLocalTodo(serverTodo);
+      }
+    }
+
+    // Fetch latest data from server
+    await fetchSections();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -692,14 +763,24 @@ const TodoApp: React.FC = () => {
 
         {/* Content container with proper padding for holes */}
         <div className="pl-24 pr-8 py-8 notebook-lines relative">
-          {/* Sign Out Button */}
-          <button
-            onClick={handleSignOut}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-            title="Sign Out"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-          </button>
+          {/* Offline indicator */}
+          {isOffline && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+              <p className="font-bold">Offline Mode</p>
+              <p>You're currently working offline. Changes will be synced when you're back online.</p>
+            </div>
+          )}
+          
+          {/* Sign Out Button (only show when online) */}
+          {!isOffline && user && (
+            <button
+              onClick={handleSignOut}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              title="Sign Out"
+            >
+              <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            </button>
+          )}
 
           {/* Header area */}
           <div className="relative mb-12">

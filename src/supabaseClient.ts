@@ -9,13 +9,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Sign up a new user (you should call this function when a user signs up)
 export const signUp = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({ email, password })
   return { user: data.user, error }
 }
 
-// Sign in a user (you should call this function when a user signs in)
 export const signIn = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   return { user: data.user, error }
