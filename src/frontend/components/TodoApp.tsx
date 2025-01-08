@@ -1,7 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import "./todo-styles.css";
 import supabase, { signIn, signUp } from "../../supabaseClient";
-import { openLocalDatabase, getLocalSections, getLocalTodos, saveLocalSection, saveLocalTodo, deleteLocalSection, deleteLocalTodo } from '../../utils/localDatabase';
+import {
+  openLocalDatabase,
+  getLocalSections,
+  getLocalTodos,
+  saveLocalSection,
+  saveLocalTodo,
+  deleteLocalSection,
+  deleteLocalTodo,
+} from "../../utils/localDatabase";
 import {
   DragDropContext,
   Droppable,
@@ -16,10 +24,21 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 // Remove the import for Switch from @headlessui/react
-import { User } from '@supabase/supabase-js';
+import { User } from "@supabase/supabase-js";
 
 const ChainIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1 mb-1">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="inline-block mr-1 mb-1"
+  >
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
   </svg>
@@ -49,15 +68,19 @@ const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/slack-preview?url=${encodeURIComponent(url)}`);
+        const response = await fetch(
+          `/api/slack-preview?url=${encodeURIComponent(url)}`
+        );
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         setPreview(data.preview);
       } catch (error) {
-        console.error('Error fetching Slack preview:', error);
-        setError(error instanceof Error ? error.message : 'An unknown error occurred');
+        console.error("Error fetching Slack preview:", error);
+        setError(
+          error instanceof Error ? error.message : "An unknown error occurred"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -83,19 +106,21 @@ interface SlackPreviewProps {
 
 const shortenUrl = (url: string, maxLength: number = 50) => {
   // Remove the protocol (http:// or https://)
-  let displayUrl = url.replace(/^https?:\/\//, '');
-  
+  let displayUrl = url.replace(/^https?:\/\//, "");
+
   if (displayUrl.length <= maxLength) return displayUrl;
-  
+
   // Calculate lengths
-  const ellipsis = '...';
+  const ellipsis = "...";
   const frontLength = Math.ceil((maxLength - ellipsis.length) / 2);
   const backLength = Math.floor((maxLength - ellipsis.length) / 2);
-  
+
   // Truncate the middle
-  return displayUrl.substring(0, frontLength) + 
-         ellipsis + 
-         displayUrl.substring(displayUrl.length - backLength);
+  return (
+    displayUrl.substring(0, frontLength) +
+    ellipsis +
+    displayUrl.substring(displayUrl.length - backLength)
+  );
 };
 
 const TodoApp: React.FC = () => {
@@ -116,11 +141,77 @@ const TodoApp: React.FC = () => {
   const filtersRef = useRef<HTMLDivElement>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  const syncData = useCallback(async () => {
+    if (isOffline) return;
+
+    const localSections = await getLocalSections();
+    const localTodos = await getLocalTodos();
+
+    // Sync sections
+    for (const localSection of localSections) {
+      const { data: serverSection, error } = await supabase
+        .from("sections")
+        .select("*")
+        .eq("id", localSection.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching server section:", error);
+        continue;
+      }
+
+      if (
+        !serverSection ||
+        new Date(localSection.last_edited) > new Date(serverSection.last_edited)
+      ) {
+        const { error: upsertError } = await supabase
+          .from("sections")
+          .upsert(localSection, { onConflict: "id" });
+
+        if (upsertError) console.error("Error syncing section:", upsertError);
+      } else {
+        await saveLocalSection(serverSection);
+      }
+    }
+
+    // Sync todos (similar to sections)
+    for (const localTodo of localTodos) {
+      const { data: serverTodo, error } = await supabase
+        .from("todos")
+        .select("*")
+        .eq("id", localTodo.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching server todo:", error);
+        continue;
+      }
+
+      if (
+        !serverTodo ||
+        new Date(localTodo.last_edited) > new Date(serverTodo.last_edited)
+      ) {
+        const { error: upsertError } = await supabase
+          .from("todos")
+          .upsert(localTodo, { onConflict: "id" });
+
+        if (upsertError) console.error("Error syncing todo:", upsertError);
+      } else {
+        await saveLocalTodo(serverTodo);
+      }
+    }
+
+    // Fetch latest data from server
+    await fetchSections();
+  }, [isOffline]);
+
   useEffect(() => {
     const initializeApp = async () => {
       await openLocalDatabase();
       if (navigator.onLine) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         setUser(user);
       }
       await loadData();
@@ -137,22 +228,24 @@ const TodoApp: React.FC = () => {
 
     initializeApp();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await loadData();
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await loadData();
+        }
       }
-    });
+    );
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
       authListener.subscription.unsubscribe();
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [syncData]);
 
   const loadData = async () => {
     const localSections = await getLocalSections();
@@ -166,9 +259,9 @@ const TodoApp: React.FC = () => {
   };
 
   const combineData = (sections: any[], todos: any[]): TodoSection[] => {
-    return sections.map(section => ({
+    return sections.map((section) => ({
       ...section,
-      todos: todos.filter(todo => todo.section_id === section.id)
+      todos: todos.filter((todo) => todo.section_id === section.id),
     }));
   };
 
@@ -219,7 +312,9 @@ const TodoApp: React.FC = () => {
   };
 
   const deleteSection = async (sectionId: number) => {
-    const sectionToDelete = sections.find(section => section.id === sectionId);
+    const sectionToDelete = sections.find(
+      (section) => section.id === sectionId
+    );
     if (!sectionToDelete) return;
 
     if (sectionToDelete.todos.length > 0) {
@@ -231,10 +326,7 @@ const TodoApp: React.FC = () => {
 
     try {
       // Delete all todos in the section
-      await supabase
-        .from("todos")
-        .delete()
-        .eq("section_id", sectionId);
+      await supabase.from("todos").delete().eq("section_id", sectionId);
 
       // Delete the section
       const { error } = await supabase
@@ -288,7 +380,9 @@ const TodoApp: React.FC = () => {
             ? {
                 ...section,
                 todos: section.todos.map((todo) =>
-                  todo.id === todoId ? { ...todo, completed: true, completed_at: now } : todo
+                  todo.id === todoId
+                    ? { ...todo, completed: true, completed_at: now }
+                    : todo
                 ),
               }
             : section
@@ -301,9 +395,9 @@ const TodoApp: React.FC = () => {
     setShowCompleted(!showCompleted);
   };
 
-  const filteredSections = sections.map(section => ({
+  const filteredSections = sections.map((section) => ({
     ...section,
-    todos: section.todos.filter(todo => showCompleted || !todo.completed)
+    todos: section.todos.filter((todo) => showCompleted || !todo.completed),
   }));
 
   const onDragEnd = async (result: DropResult) => {
@@ -430,7 +524,7 @@ const TodoApp: React.FC = () => {
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     } else {
       setUser(null);
       setSections([]);
@@ -488,37 +582,58 @@ const TodoApp: React.FC = () => {
   };
 
   const autoResizeTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = '32px'; // Set to one line height
+    element.style.height = "32px"; // Set to one line height
     element.style.height = `${element.scrollHeight}px`;
   };
 
-  const handleTodoChange = (sectionId: number, todoId: number, newText: string) => {
-    setSections(sections.map(s => 
-      s.id === sectionId 
-        ? {...s, todos: s.todos.map(t => 
-            t.id === todoId ? {...t, text: newText} : t
-          )}
-        : s
-    ));
+  const handleTodoChange = (
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
+    setSections(
+      sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              todos: s.todos.map((t) =>
+                t.id === todoId ? { ...t, text: newText } : t
+              ),
+            }
+          : s
+      )
+    );
     if (editInputRef.current) {
       autoResizeTextarea(editInputRef.current);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, sectionId: number, todoId: number) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    sectionId: number,
+    todoId: number
+  ) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      finishEditingTodo(sectionId, todoId, (e.target as HTMLTextAreaElement).value);
+      finishEditingTodo(
+        sectionId,
+        todoId,
+        (e.target as HTMLTextAreaElement).value
+      );
     }
   };
 
   const handleTodoClick = (e: React.MouseEvent, todoId: number) => {
-    if (!(e.target as HTMLElement).closest('a')) {
+    if (!(e.target as HTMLElement).closest("a")) {
       setEditingTodoId(todoId);
     }
   };
 
-  const handleTodoBlur = (sectionId: number, todoId: number, newText: string) => {
+  const handleTodoBlur = (
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
     finishEditingTodo(sectionId, todoId, newText);
     setEditingTodoId(null);
   };
@@ -542,7 +657,12 @@ const TodoApp: React.FC = () => {
       if (part.match(urlRegex)) {
         return (
           <React.Fragment key={index}>
-            <a href={part} target="_blank" rel="noopener noreferrer" className="todo-link">
+            <a
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="todo-link"
+            >
               <ChainIcon />
               {shortenUrl(part)}
             </a>
@@ -556,7 +676,9 @@ const TodoApp: React.FC = () => {
 
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
     return (
-      <div className={`todo-item-container ${todo.completed ? 'opacity-50' : ''}`}>
+      <div
+        className={`todo-item-container ${todo.completed ? "opacity-50" : ""}`}
+      >
         <input
           type="checkbox"
           checked={todo.completed}
@@ -568,15 +690,19 @@ const TodoApp: React.FC = () => {
             <textarea
               ref={editInputRef}
               value={todo.text}
-              onChange={(e) => handleTodoChange(section.id, todo.id, e.target.value)}
+              onChange={(e) =>
+                handleTodoChange(section.id, todo.id, e.target.value)
+              }
               onBlur={() => handleTodoBlur(section.id, todo.id, todo.text)}
               onKeyDown={(e) => handleKeyDown(e, section.id, todo.id)}
               className="todo-input"
-              style={{ height: 'auto', overflow: 'hidden' }}
+              style={{ height: "auto", overflow: "hidden" }}
             />
           ) : (
-            <div 
-              className={`todo-item-content ${todo.completed ? 'todo-completed' : ''}`}
+            <div
+              className={`todo-item-content ${
+                todo.completed ? "todo-completed" : ""
+              }`}
               onClick={(e) => handleTodoClick(e, todo.id)}
             >
               {renderTextWithLinks(todo.text)}
@@ -584,8 +710,8 @@ const TodoApp: React.FC = () => {
           )}
         </div>
         <span className="todo-timestamp">
-          {todo.completed 
-            ? `Completed: ${formatCreatedAt(todo.completed_at!)}` 
+          {todo.completed
+            ? `Completed: ${formatCreatedAt(todo.completed_at!)}`
             : formatCreatedAt(todo.created_at)}
         </span>
       </div>
@@ -641,31 +767,39 @@ const TodoApp: React.FC = () => {
   }
 
   // Add this custom Toggle component
-  const Toggle: React.FC<{ checked: boolean; onChange: () => void }> = ({ checked, onChange }) => (
+  const Toggle: React.FC<{ checked: boolean; onChange: () => void }> = ({
+    checked,
+    onChange,
+  }) => (
     <div
       className={`relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
-        checked ? 'bg-blue-600' : 'bg-gray-200'
+        checked ? "bg-blue-600" : "bg-gray-200"
       }`}
       onClick={onChange}
     >
       <span
         className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
-          checked ? 'translate-x-4' : 'translate-x-0'
+          checked ? "translate-x-4" : "translate-x-0"
         }`}
       />
     </div>
   );
 
-  const reorderSection = async (sectionId: number, direction: 'up' | 'down') => {
-    const currentIndex = sections.findIndex(section => section.id === sectionId);
+  const reorderSection = async (
+    sectionId: number,
+    direction: "up" | "down"
+  ) => {
+    const currentIndex = sections.findIndex(
+      (section) => section.id === sectionId
+    );
     if (
-      (direction === 'up' && currentIndex === 0) ||
-      (direction === 'down' && currentIndex === sections.length - 1)
+      (direction === "up" && currentIndex === 0) ||
+      (direction === "down" && currentIndex === sections.length - 1)
     ) {
       return; // Can't move further in this direction
     }
 
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
     const newSections = [...sections];
     const [movedSection] = newSections.splice(currentIndex, 1);
     newSections.splice(newIndex, 0, movedSection);
@@ -674,75 +808,19 @@ const TodoApp: React.FC = () => {
 
     // Update the order in the database
     try {
-      await Promise.all(newSections.map((section, index) => 
-        supabase
-          .from("sections")
-          .update({ order: index })
-          .eq("id", section.id)
-      ));
+      await Promise.all(
+        newSections.map((section, index) =>
+          supabase
+            .from("sections")
+            .update({ order: index })
+            .eq("id", section.id)
+        )
+      );
     } catch (error) {
       console.error("Error updating section order:", error);
       // Optionally, revert the state if the database update fails
       setSections(sections);
     }
-  };
-
-  const syncData = async () => {
-    if (isOffline) return;
-
-    const localSections = await getLocalSections();
-    const localTodos = await getLocalTodos();
-
-    // Sync sections
-    for (const localSection of localSections) {
-      const { data: serverSection, error } = await supabase
-        .from("sections")
-        .select("*")
-        .eq("id", localSection.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching server section:", error);
-        continue;
-      }
-
-      if (!serverSection || new Date(localSection.last_edited) > new Date(serverSection.last_edited)) {
-        const { error: upsertError } = await supabase
-          .from("sections")
-          .upsert(localSection, { onConflict: 'id' });
-
-        if (upsertError) console.error("Error syncing section:", upsertError);
-      } else {
-        await saveLocalSection(serverSection);
-      }
-    }
-
-    // Sync todos (similar to sections)
-    for (const localTodo of localTodos) {
-      const { data: serverTodo, error } = await supabase
-        .from("todos")
-        .select("*")
-        .eq("id", localTodo.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching server todo:", error);
-        continue;
-      }
-
-      if (!serverTodo || new Date(localTodo.last_edited) > new Date(serverTodo.last_edited)) {
-        const { error: upsertError } = await supabase
-          .from("todos")
-          .upsert(localTodo, { onConflict: 'id' });
-
-        if (upsertError) console.error("Error syncing todo:", upsertError);
-      } else {
-        await saveLocalTodo(serverTodo);
-      }
-    }
-
-    // Fetch latest data from server
-    await fetchSections();
   };
 
   return (
@@ -765,12 +843,18 @@ const TodoApp: React.FC = () => {
         <div className="pl-24 pr-8 py-8 notebook-lines relative">
           {/* Offline indicator */}
           {isOffline && (
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+            <div
+              className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4"
+              role="alert"
+            >
               <p className="font-bold">Offline Mode</p>
-              <p>You're currently working offline. Changes will be synced when you're back online.</p>
+              <p>
+                You're currently working offline. Changes will be synced when
+                you're back online.
+              </p>
             </div>
           )}
-          
+
           {/* Sign Out Button (only show when online) */}
           {!isOffline && user && (
             <button
@@ -801,10 +885,18 @@ const TodoApp: React.FC = () => {
               </button>
               {isFiltersOpen && (
                 <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                  <div
+                    className="py-1"
+                    role="menu"
+                    aria-orientation="vertical"
+                    aria-labelledby="options-menu"
+                  >
                     <div className="px-4 py-2 text-sm text-gray-700 flex items-center justify-between">
                       <span>Show completed</span>
-                      <Toggle checked={showCompleted} onChange={toggleShowCompleted} />
+                      <Toggle
+                        checked={showCompleted}
+                        onChange={toggleShowCompleted}
+                      />
                     </div>
                   </div>
                 </div>
@@ -863,7 +955,7 @@ const TodoApp: React.FC = () => {
                     )}
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => reorderSection(section.id, 'up')}
+                        onClick={() => reorderSection(section.id, "up")}
                         className="text-gray-400 hover:text-blue-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
                         title="Move Section Up"
@@ -872,7 +964,7 @@ const TodoApp: React.FC = () => {
                         <ChevronUpIcon className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => reorderSection(section.id, 'down')}
+                        onClick={() => reorderSection(section.id, "down")}
                         className="text-gray-400 hover:text-blue-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
                         title="Move Section Down"

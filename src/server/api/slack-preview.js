@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const router = express.Router();
 
-router.get('/slack-preview-service', async (req, res) => {
+router.get('/slack-preview', async (req, res) => {
   console.log('Received request for Slack preview');
   const { url } = req.query;
   
@@ -50,11 +50,11 @@ router.get('/slack-preview-service', async (req, res) => {
       },
     });
 
-    console.log('Slack API response:', response.data);
+    console.log('Slack API response:', JSON.stringify(response.data, null, 2));
 
     if (!response.data.ok) {
       console.log('Slack API error:', response.data.error);
-      throw new Error(`Slack API error: ${response.data.error}`);
+      return res.status(400).json({ error: `Slack API error: ${response.data.error}` });
     }
 
     const message = response.data.messages[0];
@@ -67,6 +67,19 @@ router.get('/slack-preview-service', async (req, res) => {
     res.json({ preview: message.text });
   } catch (error) {
     console.error('Error fetching Slack preview:', error);
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Error data:', error.response.data);
+      console.error('Error status:', error.response.status);
+      console.error('Error headers:', error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Error request:', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error message:', error.message);
+    }
     res.status(500).json({ error: 'Failed to fetch Slack preview', details: error.message });
   }
 });
