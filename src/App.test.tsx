@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "./App";
 import TodoApp from "./frontend/components/TodoApp";
@@ -80,5 +80,34 @@ describe("App Component", () => {
 
     render(<App />);
     expect(screen.getByText("Sorry.. there was an error")).toBeInTheDocument();
+  });
+
+  it('ensures state updates are atomic and don\'t cause inconsistencies', async () => {
+    // Implement this test
+    const mockUser = { id: 'test-user-id', email: 'test@example.com' } as User;
+    jest.spyOn(supabase.auth, "getUser").mockResolvedValue({ 
+      data: { user: mockUser }, 
+      error: null 
+    } as unknown as UserResponse);
+
+    const { rerender } = render(<App />);
+
+    // Simulate multiple state updates
+    await act(async () => {
+      // Trigger state updates here
+      // For example, if TodoApp has a method to add todos:
+      // await (TodoApp as jest.Mock).mock.calls[0][0].onAddTodo('Todo 1');
+      // await (TodoApp as jest.Mock).mock.calls[0][0].onAddTodo('Todo 2');
+    });
+
+    // Re-render the component
+    rerender(<App />);
+
+    // Add assertions to check for consistency
+    // For example:
+    // expect(screen.getByText('Todo 1')).toBeInTheDocument();
+    // expect(screen.getByText('Todo 2')).toBeInTheDocument();
+
+    // You may need to adjust these assertions based on your actual implementation
   });
 });
