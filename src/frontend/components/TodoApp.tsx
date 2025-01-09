@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./todo-styles.css";
 import supabase, { signUp, signIn } from "../../supabaseClient";
 import {
@@ -21,8 +21,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-// Remove the import for Switch from @headlessui/react
-import { User } from "@supabase/supabase-js";
+// import { User } from "@supabase/supabase-js";
 
 const ChainIcon = () => (
   <svg
@@ -138,9 +137,55 @@ const TodoApp: React.FC = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline] = useState(!navigator.onLine);
 
-  const syncData = useCallback(async () => {
+  const fetchSections = useCallback(async () => {
+    if (!user) return;
+
+    const { data: sectionsData, error: sectionsError } = await supabase
+      .from("sections")
+      .select("*")
+      .order("order");
+
+    if (sectionsError) {
+      console.error("Error fetching sections:", sectionsError);
+      return;
+    }
+
+    const { data: todosData, error: todosError } = await supabase
+      .from("todos")
+      .select("*")
+      .order("id");
+
+    if (todosError) {
+      console.error("Error fetching todos:", todosError);
+      return;
+    }
+
+    const combinedData = combineData(sectionsData, todosData);
+    setSections(combinedData);
+
+    // Save fetched data to local storage
+    for (const section of sectionsData) {
+      await saveLocalSection(section);
+    }
+    for (const todo of todosData) {
+      await saveLocalTodo(todo);
+    }
+  }, [user]);
+
+  const loadData = useCallback(async () => {
+    const localSections = await getLocalSections();
+    const localTodos = await getLocalTodos();
+
+    if (localSections?.length > 0 && localTodos?.length > 0) {
+      setSections(combineData(localSections, localTodos));
+    } else if (navigator.onLine) {
+      await fetchSections();
+    }
+  }, [fetchSections]);
+
+  useCallback(async () => {
     if (isOffline) return;
 
     const localSections = await getLocalSections();
@@ -202,7 +247,7 @@ const TodoApp: React.FC = () => {
 
     // Fetch latest data from server
     await fetchSections();
-  }, [isOffline, user]);
+  }, [isOffline, fetchSections]);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -219,7 +264,9 @@ const TodoApp: React.FC = () => {
       }
     };
 
-    let authListener: { data: { subscription: { unsubscribe: () => void } } } | null = null;
+    let authListener: {
+      data: { subscription: { unsubscribe: () => void } };
+    } | null = null;
 
     try {
       authListener = supabase.auth.onAuthStateChange((event, session) => {
@@ -235,65 +282,19 @@ const TodoApp: React.FC = () => {
     return () => {
       authListener?.data.subscription.unsubscribe();
     };
-  }, []);  // Remove loadData from the dependency array
+  }, [loadData]);
 
   useEffect(() => {
     if (user) {
       loadData();
     }
-  }, [user]);
-
-  const loadData = async () => {
-    const localSections = await getLocalSections();
-    const localTodos = await getLocalTodos();
-
-    if (localSections?.length > 0 && localTodos?.length > 0) {
-      setSections(combineData(localSections, localTodos));
-    } else if (navigator.onLine) {
-      await fetchSections();
-    }
-  };
+  }, [user, loadData]);
 
   const combineData = (sections: any[], todos: any[]): TodoSection[] => {
     return sections.map((section) => ({
       ...section,
       todos: todos.filter((todo) => todo.section_id === section.id),
     }));
-  };
-
-  const fetchSections = async () => {
-    if (!user) return;
-
-    const { data: sectionsData, error: sectionsError } = await supabase
-      .from("sections")
-      .select("*")
-      .order("order");
-
-    if (sectionsError) {
-      console.error("Error fetching sections:", sectionsError);
-      return;
-    }
-
-    const { data: todosData, error: todosError } = await supabase
-      .from("todos")
-      .select("*")
-      .order("id");
-
-    if (todosError) {
-      console.error("Error fetching todos:", todosError);
-      return;
-    }
-
-    const combinedData = combineData(sectionsData, todosData);
-    setSections(combinedData);
-
-    // Save fetched data to local storage
-    for (const section of sectionsData) {
-      await saveLocalSection(section);
-    }
-    for (const todo of todosData) {
-      await saveLocalTodo(todo);
-    }
   };
 
   const addSection = async () => {
@@ -362,7 +363,7 @@ const TodoApp: React.FC = () => {
 
   const checkTodo = async (sectionId: number, todoId: number) => {
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("todos")
       .update({ completed: true, completed_at: now })
       .eq("id", todoId)
@@ -464,10 +465,6 @@ const TodoApp: React.FC = () => {
     setEditingSectionId(null);
   };
 
-  const startEditingTodo = (todoId: number) => {
-    setEditingTodoId(todoId);
-  };
-
   const finishEditingTodo = async (
     sectionId: number,
     todoId: number,
@@ -560,22 +557,15 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const handleExistingTodoBlur = async (
-    sectionId: number,
-    todoId: number,
-    newText: string
-  ) => {
-    await finishEditingTodo(sectionId, todoId, newText);
-  };
-
-  const handleExistingTodoKeyPress = async (
+  const handleTodoKeyPress = async (
     e: React.KeyboardEvent,
     sectionId: number,
     todoId: number,
     newText: string
   ) => {
     if (e.key === "Enter") {
-      await handleExistingTodoBlur(sectionId, todoId, newText);
+      e.preventDefault();
+      await finishEditingTodo(sectionId, todoId, newText);
     }
   };
 
@@ -603,21 +593,6 @@ const TodoApp: React.FC = () => {
     );
     if (editInputRef.current) {
       autoResizeTextarea(editInputRef.current);
-    }
-  };
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLTextAreaElement>,
-    sectionId: number,
-    todoId: number
-  ) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      finishEditingTodo(
-        sectionId,
-        todoId,
-        (e.target as HTMLTextAreaElement).value
-      );
     }
   };
 
@@ -691,10 +666,14 @@ const TodoApp: React.FC = () => {
               onChange={(e) =>
                 handleTodoChange(section.id, todo.id, e.target.value)
               }
-              onBlur={() => handleTodoBlur(section.id, todo.id, todo.text)}
-              onKeyDown={(e) => handleKeyDown(e, section.id, todo.id)}
-              className="todo-input"
-              style={{ height: "auto", overflow: "hidden" }}
+              onBlur={(e) =>
+                handleTodoBlur(section.id, todo.id, e.target.value)
+              }
+              onKeyPress={(e) =>
+                handleTodoKeyPress(e, section.id, todo.id, todo.text)
+              }
+              className="w-full p-2 border rounded"
+              autoFocus
             />
           ) : (
             <div
@@ -718,9 +697,14 @@ const TodoApp: React.FC = () => {
 
   if (!user) {
     return (
-      <div data-testid="todo-app" className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6">
+      <div
+        data-testid="todo-app"
+        className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6"
+      >
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
-          <h2 className="text-2xl font-serif text-gray-800 mb-6">Sign Up or Sign In</h2>
+          <h2 className="text-2xl font-serif text-gray-800 mb-6">
+            Sign Up or Sign In
+          </h2>
           <form onSubmit={(e) => handleAuth(e, true)} className="space-y-4">
             <input
               type="email"
