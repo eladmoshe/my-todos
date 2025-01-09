@@ -7,8 +7,6 @@ import {
   getLocalTodos,
   saveLocalSection,
   saveLocalTodo,
-  deleteLocalSection,
-  deleteLocalTodo,
 } from "../../utils/localDatabase";
 import {
   DragDropContext,
@@ -204,7 +202,7 @@ const TodoApp: React.FC = () => {
 
     // Fetch latest data from server
     await fetchSections();
-  }, [isOffline]);
+  }, [isOffline, user]);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -232,13 +230,12 @@ const TodoApp: React.FC = () => {
     }
 
     initializeApp();
+    loadData();
 
     return () => {
-      if (authListener?.data?.subscription?.unsubscribe) {
-        authListener.data.subscription.unsubscribe();
-      }
+      authListener?.data.subscription.unsubscribe();
     };
-  }, []);
+  }, []);  // Remove loadData from the dependency array
 
   useEffect(() => {
     if (user) {
@@ -345,18 +342,18 @@ const TodoApp: React.FC = () => {
   };
 
   const addTodo = async (sectionId: number, todoText: string) => {
-    const { data, error } = await supabase
+    const { data: newTodo, error } = await supabase
       .from("todos")
       .insert({ text: todoText, section_id: sectionId })
       .select()
       .single();
     if (error) {
       console.error("Error adding todo:", error);
-    } else {
+    } else if (newTodo) {
       setSections(
         sections.map((section) =>
           section.id === sectionId
-            ? { ...section, todos: [...section.todos, data] }
+            ? { ...section, todos: [...section.todos, newTodo] }
             : section
         )
       );
