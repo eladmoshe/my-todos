@@ -8,6 +8,7 @@ import {
   saveLocalSection,
   saveLocalTodo,
 } from "../../utils/localDatabase";
+import { shortenUrl } from '../utils/urlUtils';
 import {
   DragDropContext,
   Droppable,
@@ -100,8 +101,6 @@ const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
 interface SlackPreviewProps {
   url: string;
 }
-
-import { shortenUrl } from '../utils/urlUtils';
 
 const TodoApp: React.FC = () => {
   console.log("Rendering TodoApp component");
