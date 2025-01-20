@@ -372,6 +372,27 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const deleteTodo = async (sectionId: number, todoId: number) => {
+    try {
+      const { error } = await supabase.from("todos").delete().eq("id", todoId);
+
+      if (error) throw error;
+
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                todos: section.todos.filter((todo) => todo.id !== todoId),
+              }
+            : section
+        )
+      );
+    } catch (error) {
+      console.error("Error deleting todo:", error);
+    }
+  };
+
   const toggleShowCompleted = () => {
     setShowCompleted(!showCompleted);
   };
@@ -654,7 +675,7 @@ const TodoApp: React.FC = () => {
               onKeyPress={(e) =>
                 handleTodoKeyPress(e, section.id, todo.id, todo.text)
               }
-              className="w-full p-2 border rounded"
+              className="todo-input"
               autoFocus
             />
           ) : (
@@ -667,6 +688,13 @@ const TodoApp: React.FC = () => {
               {renderTextWithLinks(todo.text)}
             </div>
           )}
+          <button
+            onClick={() => deleteTodo(section.id, todo.id)}
+            className="ml-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+            title="Delete Todo"
+          >
+            <TrashIcon className="w-5 h-5" />
+          </button>
         </div>
         <span className="todo-timestamp">
           {todo.completed

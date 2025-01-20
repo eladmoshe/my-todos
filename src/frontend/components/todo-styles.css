@@ -37,6 +37,44 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+/* Todo item container */
+.todo-item-container {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 1rem;
+}
+
+/* Todo content wrapper */
+.todo-content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+  /* Prevents flex item from overflowing */
+}
+
+/* Todo item content */
+.todo-item-content {
+  flex: 1;
+  padding: 0.25rem 0;
+  min-width: 0;
+  /* Prevents text from overflowing */
+  word-wrap: break-word;
+}
+
+/* Delete button */
+.todo-content-wrapper button {
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+  padding: 0.25rem;
+}
+
+.todo-item:hover .todo-content-wrapper button {
+  opacity: 1;
+}
+
 /* Checkbox styling */
 .todo-checkbox {
   appearance: none;
