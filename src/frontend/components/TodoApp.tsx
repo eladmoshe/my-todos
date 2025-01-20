@@ -144,7 +144,11 @@ const TodoApp: React.FC = () => {
       return;
     }
 
-    const combinedData = combineData(sectionsData, todosData);
+    const combinedData = sectionsData.map((section) => ({
+      ...section,
+      todos: todosData.filter((todo) => todo.section_id === section.id),
+    }));
+
     setSections(combinedData);
 
     // Save fetched data to local storage
@@ -155,81 +159,6 @@ const TodoApp: React.FC = () => {
       await saveLocalTodo(todo);
     }
   }, [user]);
-
-  const loadData = useCallback(async () => {
-    const localSections = await getLocalSections();
-    const localTodos = await getLocalTodos();
-
-    if (localSections?.length > 0 && localTodos?.length > 0) {
-      setSections(combineData(localSections, localTodos));
-    } else if (navigator.onLine) {
-      await fetchSections();
-    }
-  }, [fetchSections]);
-
-  useCallback(async () => {
-    if (isOffline) return;
-
-    const localSections = await getLocalSections();
-    const localTodos = await getLocalTodos();
-
-    // Sync sections
-    for (const localSection of localSections) {
-      const { data: serverSection, error } = await supabase
-        .from("sections")
-        .select("*")
-        .eq("id", localSection.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching server section:", error);
-        continue;
-      }
-
-      if (
-        !serverSection ||
-        new Date(localSection.last_edited) > new Date(serverSection.last_edited)
-      ) {
-        const { error: upsertError } = await supabase
-          .from("sections")
-          .upsert(localSection, { onConflict: "id" });
-
-        if (upsertError) console.error("Error syncing section:", upsertError);
-      } else {
-        await saveLocalSection(serverSection);
-      }
-    }
-
-    // Sync todos (similar to sections)
-    for (const localTodo of localTodos) {
-      const { data: serverTodo, error } = await supabase
-        .from("todos")
-        .select("*")
-        .eq("id", localTodo.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching server todo:", error);
-        continue;
-      }
-
-      if (
-        !serverTodo ||
-        new Date(localTodo.last_edited) > new Date(serverTodo.last_edited)
-      ) {
-        const { error: upsertError } = await supabase
-          .from("todos")
-          .upsert(localTodo, { onConflict: "id" });
-
-        if (upsertError) console.error("Error syncing todo:", upsertError);
-      } else {
-        await saveLocalTodo(serverTodo);
-      }
-    }
-
-    // Fetch latest data from server
-    await fetchSections();
-  }, [isOffline, fetchSections]);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -259,36 +188,92 @@ const TodoApp: React.FC = () => {
     }
 
     initializeApp();
-    loadData();
 
     return () => {
       authListener?.data.subscription.unsubscribe();
     };
-  }, [loadData]);
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user, loadData]);
+    if (!user) return;
 
-  const combineData = (sections: any[], todos: any[]): TodoSection[] => {
-    return sections.map((section) => ({
-      ...section,
-      todos: todos.filter((todo) => todo.section_id === section.id),
-    }));
+    const loadData = async () => {
+      if (!navigator.onLine) {
+        const localSections = await getLocalSections();
+        const localTodos = await getLocalTodos();
+        if (localSections?.length > 0 && localTodos?.length > 0) {
+          setSections(
+            localSections.map((section) => ({
+              ...section,
+              todos: localTodos.filter(
+                (todo) => todo.section_id === section.id
+              ),
+            }))
+          );
+        }
+      } else {
+        await fetchSections();
+      }
+    };
+
+    loadData();
+  }, [user, fetchSections]);
+
+  const addTodo = async (sectionId: number, todoText: string) => {
+    try {
+      const { data: newTodo, error } = await supabase
+        .from("todos")
+        .insert({ text: todoText, section_id: sectionId })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (newTodo) {
+        setSections((prevSections) =>
+          prevSections.map((section) =>
+            section.id === sectionId
+              ? { ...section, todos: [...section.todos, newTodo] }
+              : section
+          )
+        );
+        await saveLocalTodo(newTodo);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error adding todo:", error);
+      return false;
+    }
   };
 
-  const addSection = async () => {
-    const { data, error } = await supabase
-      .from("sections")
-      .insert({ title: "New Section" })
-      .select()
-      .single();
-    if (error) {
-      console.error("Error adding section:", error);
+  const handleNewTodoBlur = async (sectionId: number) => {
+    const text = newTodoText.trim();
+    if (text) {
+      const success = await addTodo(sectionId, text);
+      if (success) {
+        setNewTodoText("");
+        setNewTodoSectionId(null);
+      }
     } else {
-      setSections([...sections, { ...data, todos: [] }]);
+      setNewTodoSectionId(null);
+    }
+  };
+
+  const handleNewTodoKeyPress = async (
+    e: React.KeyboardEvent,
+    sectionId: number
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const text = newTodoText.trim();
+      if (text) {
+        const success = await addTodo(sectionId, text);
+        if (success) {
+          setNewTodoText("");
+          setNewTodoSectionId(null);
+        }
+      }
     }
   };
 
@@ -321,25 +306,6 @@ const TodoApp: React.FC = () => {
     } catch (error) {
       console.error("Error deleting section:", error);
       // You might want to show an error message to the user here
-    }
-  };
-
-  const addTodo = async (sectionId: number, todoText: string) => {
-    const { data: newTodo, error } = await supabase
-      .from("todos")
-      .insert({ text: todoText, section_id: sectionId })
-      .select()
-      .single();
-    if (error) {
-      console.error("Error adding todo:", error);
-    } else if (newTodo) {
-      setSections(
-        sections.map((section) =>
-          section.id === sectionId
-            ? { ...section, todos: [...section.todos, newTodo] }
-            : section
-        )
-      );
     }
   };
 
@@ -510,7 +476,6 @@ const TodoApp: React.FC = () => {
       } else {
         console.log(`${isSignUp ? "Signed up" : "Signed in"}:`, authUser);
         setUser(authUser);
-        await loadData();
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
@@ -543,23 +508,6 @@ const TodoApp: React.FC = () => {
     setNewTodoText(e.target.value);
   };
 
-  const handleNewTodoBlur = async (sectionId: number) => {
-    if (newTodoText.trim() !== "") {
-      await addTodo(sectionId, newTodoText);
-    }
-    setNewTodoSectionId(null);
-    setNewTodoText("");
-  };
-
-  const handleNewTodoKeyPress = async (
-    e: React.KeyboardEvent,
-    sectionId: number
-  ) => {
-    if (e.key === "Enter") {
-      await handleNewTodoBlur(sectionId);
-    }
-  };
-
   const handleTodoKeyPress = async (
     e: React.KeyboardEvent,
     sectionId: number,
@@ -572,30 +520,26 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const autoResizeTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = "32px"; // Set to one line height
-    element.style.height = `${element.scrollHeight}px`;
-  };
-
   const handleTodoChange = (
     sectionId: number,
     todoId: number,
     newText: string
   ) => {
     setSections(
-      sections.map((s) =>
-        s.id === sectionId
+      sections.map((section) =>
+        section.id === sectionId
           ? {
-              ...s,
-              todos: s.todos.map((t) =>
-                t.id === todoId ? { ...t, text: newText } : t
+              ...section,
+              todos: section.todos.map((todo) =>
+                todo.id === todoId ? { ...todo, text: newText } : todo
               ),
             }
-          : s
+          : section
       )
     );
     if (editInputRef.current) {
-      autoResizeTextarea(editInputRef.current);
+      editInputRef.current.style.height = "32px"; // Set to one line height
+      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
     }
   };
 
@@ -617,7 +561,8 @@ const TodoApp: React.FC = () => {
   useEffect(() => {
     if (editingTodoId !== null && editInputRef.current) {
       editInputRef.current.focus();
-      autoResizeTextarea(editInputRef.current);
+      editInputRef.current.style.height = "32px"; // Set to one line height
+      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
     }
   }, [editingTodoId]);
 
@@ -807,6 +752,28 @@ const TodoApp: React.FC = () => {
       console.error("Error updating section order:", error);
       // Optionally, revert the state if the database update fails
       setSections(sections);
+    }
+  };
+
+  const addSection = async () => {
+    try {
+      const result = await supabase
+        .from("sections")
+        .insert({ title: "New Section" })
+        .select()
+        .single();
+
+      if (result.error) {
+        console.error("Error adding section:", result.error);
+        return;
+      }
+
+      setSections((prevSections) => [
+        ...prevSections,
+        { ...result.data, todos: [] },
+      ]);
+    } catch (error) {
+      console.error("Error adding section:", error);
     }
   };
 
