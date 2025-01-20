@@ -15,12 +15,13 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
-import { format, parseISO } from "date-fns"; // Make sure to install this package: npm install date-fns
+import { format, parseISO, differenceInWeeks } from "date-fns"; // Make sure to install this package: npm install date-fns
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 // import { User } from "@supabase/supabase-js";
 
@@ -102,6 +103,21 @@ interface SlackPreviewProps {
   url: string;
 }
 
+const LoadingSkeleton: React.FC = () => {
+  return (
+    <div className="todo-app">
+      {[1, 2].map((section) => (
+        <div key={section} className="skeleton-section">
+          <div className="skeleton skeleton-title"></div>
+          {[1, 2, 3].map((todo) => (
+            <div key={todo} className="skeleton skeleton-todo"></div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const TodoApp: React.FC = () => {
   console.log("Rendering TodoApp component");
   const [sections, setSections] = useState<TodoSection[]>([]);
@@ -110,7 +126,7 @@ const TodoApp: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newTodoSectionId, setNewTodoSectionId] = useState<number | null>(null);
   const [newTodoText, setNewTodoText] = useState<string>("");
@@ -218,6 +234,21 @@ const TodoApp: React.FC = () => {
     };
 
     loadData();
+  }, [user, fetchSections]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await fetchSections();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, [user, fetchSections]);
 
   const addTodo = async (sectionId: number, todoText: string) => {
@@ -503,6 +534,92 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const handleSync = async () => {
+    if (!user) return;
+
+    try {
+      console.log("Starting sync...");
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from("sections")
+        .select("*")
+        .order("order");
+
+      if (sectionsError) throw sectionsError;
+      console.log("Fetched sections:", sectionsData);
+
+      const { data: todosData, error: todosError } = await supabase
+        .from("todos")
+        .select("*")
+        .order("id");
+
+      if (todosError) throw todosError;
+      console.log("Fetched todos:", todosData);
+
+      // Clear and update local database
+      const db = await openLocalDatabase();
+
+      // Create separate transactions for clearing and updating
+      const clearTransaction = db.transaction(
+        ["sections", "todos"],
+        "readwrite"
+      );
+      console.log("Clearing local data...");
+
+      try {
+        await Promise.all([
+          clearTransaction.objectStore("sections").clear(),
+          clearTransaction.objectStore("todos").clear(),
+        ]);
+        await new Promise((resolve) => {
+          clearTransaction.oncomplete = resolve;
+        });
+        console.log("Local data cleared successfully");
+      } catch (error) {
+        console.error("Error clearing local data:", error);
+        throw error;
+      }
+
+      // Create new transaction for saving
+      const saveTransaction = db.transaction(
+        ["sections", "todos"],
+        "readwrite"
+      );
+      console.log("Saving new data...");
+
+      try {
+        const promises = [
+          ...sectionsData.map((section) =>
+            saveTransaction.objectStore("sections").add(section)
+          ),
+          ...todosData.map((todo) =>
+            saveTransaction.objectStore("todos").add(todo)
+          ),
+        ];
+
+        await Promise.all(promises);
+        await new Promise((resolve) => {
+          saveTransaction.oncomplete = resolve;
+        });
+        console.log("New data saved successfully");
+      } catch (error) {
+        console.error("Error saving new data:", error);
+        throw error;
+      }
+
+      // Update state
+      const combinedData = sectionsData.map((section) => ({
+        ...section,
+        todos: todosData.filter((todo) => todo.section_id === section.id),
+      }));
+      console.log("Updating React state with:", combinedData);
+      setSections(combinedData);
+
+      console.log("Sync completed successfully");
+    } catch (error) {
+      console.error("Error syncing data:", error);
+    }
+  };
+
   const addEmptyTodo = (sectionId: number) => {
     setNewTodoSectionId(sectionId);
     setNewTodoText("");
@@ -604,8 +721,35 @@ const TodoApp: React.FC = () => {
     });
   };
 
+  const getAgeBadgeClass = (weeks: number): string => {
+    if (weeks <= 0) return "";
+    if (weeks >= 9) return "age-badge-older";
+    return `age-badge-${weeks}`;
+  };
+
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
     const isCompleting = completingTodoId === todo.id;
+    const currentDate = new Date(); // This will use the system's current time
+    const createdDate = parseISO(todo.created_at);
+
+    // Calculate the exact difference in days and convert to weeks
+    const diffInDays = Math.floor(
+      (currentDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    // Round to nearest week instead of floor
+    const weeksOld = Math.round(diffInDays / 7);
+
+    console.log(
+      "Todo:",
+      todo.text,
+      "Created:",
+      todo.created_at,
+      "Days old:",
+      diffInDays,
+      "Weeks:",
+      weeksOld
+    );
+
     return (
       <div
         className={`todo-item-container ${todo.completed ? "opacity-50" : ""} ${
@@ -623,12 +767,22 @@ const TodoApp: React.FC = () => {
             <textarea
               ref={editInputRef}
               value={todo.text}
-              onChange={(e) =>
-                handleTodoChange(section.id, todo.id, e.target.value)
-              }
-              onBlur={(e) =>
-                handleTodoBlur(section.id, todo.id, e.target.value)
-              }
+              onChange={(e) => {
+                const newText = e.target.value;
+                setSections(
+                  sections.map((s) =>
+                    s.id === section.id
+                      ? {
+                          ...s,
+                          todos: s.todos.map((t) =>
+                            t.id === todo.id ? { ...t, text: newText } : t
+                          ),
+                        }
+                      : s
+                  )
+                );
+              }}
+              onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
               onKeyPress={(e) =>
                 handleTodoKeyPress(e, section.id, todo.id, todo.text)
               }
@@ -642,7 +796,14 @@ const TodoApp: React.FC = () => {
               }`}
               onClick={(e) => handleTodoClick(e, todo.id)}
             >
-              {renderTextWithLinks(todo.text)}
+              <span className="todo-text-content">
+                {renderTextWithLinks(todo.text)}
+              </span>
+              {weeksOld > 0 && (
+                <span className={`age-badge ${getAgeBadgeClass(weeksOld)}`}>
+                  {weeksOld}w
+                </span>
+              )}
             </div>
           )}
           <button
@@ -708,6 +869,10 @@ const TodoApp: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
   }
 
   // Add this custom Toggle component
@@ -807,13 +972,23 @@ const TodoApp: React.FC = () => {
 
           {/* Sign Out Button (only show when online) */}
           {!isOffline && user && (
-            <button
-              onClick={handleSignOut}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-              title="Sign Out"
-            >
-              <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            </button>
+            <div className="flex gap-2 absolute top-4 right-4">
+              <button
+                onClick={handleSync}
+                className="flex items-center px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+                title="Sync with server"
+              >
+                <ArrowPathIcon className="w-5 h-5 mr-1" />
+                Sync
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-200"
+              >
+                <ArrowRightOnRectangleIcon className="w-5 h-5 mr-1" />
+                Sign Out
+              </button>
+            </div>
           )}
 
           {/* Header area */}
