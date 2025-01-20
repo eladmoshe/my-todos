@@ -908,9 +908,13 @@ const TodoApp: React.FC = () => {
 
   const handleAddSection = async () => {
     try {
+      // Get the minimum order value and subtract 1 to place at top
+      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
+      const newOrder = minOrder - 1;
+
       const result = await supabase
         .from("sections")
-        .insert({ title: newSectionTitle })
+        .insert({ title: newSectionTitle || "New Section", order: newOrder })
         .select()
         .single();
 
@@ -919,11 +923,13 @@ const TodoApp: React.FC = () => {
         return;
       }
 
-      setSections((prevSections) => [
-        ...prevSections,
-        { ...result.data, todos: [] },
-      ]);
+      setSections((prevSections) =>
+        [...prevSections, { ...result.data, todos: [] }].sort(
+          (a, b) => (a.order || 0) - (b.order || 0)
+        )
+      );
       setEditingSectionId(null);
+      setNewSectionTitle("");
     } catch (error) {
       console.error("Error adding section:", error);
     }
@@ -932,10 +938,7 @@ const TodoApp: React.FC = () => {
   const addSection = async () => {
     try {
       // Get the minimum order value and subtract 1 to place at top
-      const minOrder =
-        sections.length > 0
-          ? Math.min(...sections.map((s) => s.order || 0))
-          : 0;
+      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
       const newOrder = minOrder - 1;
 
       const result = await supabase
@@ -949,10 +952,12 @@ const TodoApp: React.FC = () => {
         return;
       }
 
-      setSections((prevSections) => [
-        { ...result.data, todos: [] },
-        ...prevSections,
-      ]);
+      // Add the new section and sort by order
+      setSections((prevSections) =>
+        [...prevSections, { ...result.data, todos: [] }].sort(
+          (a, b) => (a.order || 0) - (b.order || 0)
+        )
+      );
     } catch (error) {
       console.error("Error adding section:", error);
     }
