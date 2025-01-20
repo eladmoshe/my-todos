@@ -1,219 +1,173 @@
-/* Base layout adjustments */
+/* Modern Todo App Styling */
 .todo-app {
-  min-width: 320px;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-/* Custom styling for the notebook lines */
-.notebook-paper {
-  background-image: linear-gradient(#e6e6e6 1px, transparent 1px);
-  background-size: 100% 32px;
-  background-position: 0 0;
-  padding: 16px 32px;
+/* Section styling */
+.todo-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Align content with notebook lines */
-.notebook-content {
-  line-height: 32px;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  font-size: 1.25rem;
+.todo-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Ensure consistent font size and styling for todo items */
-.todo-item-content,
-.todo-input,
-.notebook-content,
-.todo-text {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  font-size: 1.25rem;
-  line-height: 32px;
-  /* Match the notebook line height */
-  white-space: pre-wrap;
-  word-break: break-word;
+/* Section title */
+h1, h2 {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1a1a1a;
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
-/* Ensure checkbox aligns with text */
-.todo-checkbox {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #b0b0b0;
-  border-radius: 4px;
-  transition: all 200ms;
-  margin-right: 12px;
-  flex-shrink: 0;
-  margin-top: 8px;
-  /* Align with the first line of text */
-}
-
-/* Text container for todos */
-.todo-text {
-  flex: 1;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  font-size: 1.25rem;
-  padding: 0;
-  margin: 0;
-  line-height: 32px;
-  /* Match the notebook line height */
-}
-
-/* Section titles */
-h1,
-h2 {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  line-height: 1.5;
-  margin: 0;
-  padding: 0;
-}
-
-/* Button text */
-button {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-}
-
-/* Input fields */
-input,
-textarea {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  line-height: 1.5;
-  margin: 0;
-  padding: 0;
-}
-
-/* Add this new class for completed todos */
-.todo-completed {
-  text-decoration: line-through;
-  color: #9ca3af;
-  /* A muted gray color */
-}
-
-/* Adjustments for editing state */
-.todo-item-content {
-  cursor: text;
-  display: block;
-  /* Change to block to match textarea behavior */
-  flex-grow: 1;
-  padding: 4px 0;
-  /* Add vertical padding */
-  border-radius: 4px;
+/* Todo items */
+.todo-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
   transition: background-color 0.2s ease;
 }
 
-.todo-item-content:hover {
-  background-color: rgba(59, 130, 246, 0.1);
-  /* Light blue background on hover */
+.todo-item:last-child {
+  border-bottom: none;
 }
 
+/* Checkbox styling */
+.todo-checkbox {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  margin-right: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.todo-checkbox:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.todo-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Todo text styling */
+.todo-text {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #333;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+}
+
+/* Completed todo styling */
+.todo-completed {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+/* Input fields */
 .todo-input {
-  display: block;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #e5e7eb;
-  resize: none;
-  overflow: hidden;
-  /* Hide scrollbar */
   width: 100%;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  font-size: 1.25rem;
-  line-height: 32px;
-  /* Match the notebook line height */
-  min-height: 32px;
-  /* Ensure minimum height of one line */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: white;
 }
 
 .todo-input:focus {
   outline: none;
-  border-bottom-color: #3b82f6;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Timestamp positioning */
-.todo-timestamp {
-  font-family: system-ui, -apple-system, sans-serif;
-  /* Keep timestamp in regular font */
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-left: 8px;
-  opacity: 0;
-  transition: opacity 200ms;
-  flex-shrink: 0;
-  line-height: 32px;
-}
-
-.notebook-line:hover .todo-timestamp {
-  opacity: 1;
-}
-
-/* Add Section/Todo buttons */
+/* Add buttons */
 .add-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: #3b82f6;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  font-size: 1rem;
-  padding: 0;
-  background: none;
+  background: rgba(59, 130, 246, 0.1);
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  line-height: 32px;
-  transition: color 200ms;
+  transition: all 0.2s ease;
 }
 
 .add-button:hover {
+  background: rgba(59, 130, 246, 0.15);
   color: #2563eb;
 }
 
-/* New styles for todo item container */
-.todo-item-container {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-  min-height: 32px;
+/* Timestamp styling */
+.todo-timestamp {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-/* Adjust todo content wrapper */
-.todo-content-wrapper {
-  display: flex;
-  align-items: flex-start;
-  flex-grow: 1;
-  min-height: 32px;
+.todo-item:hover .todo-timestamp {
+  opacity: 1;
 }
 
-/* Adjust checkbox positioning */
-.todo-item-container .todo-checkbox {
-  margin-top: 8px;
-  /* Align with the first line of text */
-}
-
-/* Style for todo items */
-.todo-item {
-  font-size: 1.25rem;
-  line-height: 32px;
-  padding: 0;
-  margin: 0;
-}
-
-/* Styles for links in todo items */
+/* Link styling */
 .todo-link {
+  color: #3b82f6;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
-  color: #3b82f6;
-  /* Blue color for links */
-  text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .todo-link:hover {
   color: #2563eb;
-  /* Darker blue on hover */
   text-decoration: underline;
 }
 
-.todo-link svg {
-  margin-right: 4px;
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.group:hover .absolute {
-  display: block;
+.todo-item {
+  animation: fadeIn 0.3s ease;
 }
 
-.absolute {
-  display: none;
+/* Drag and drop styling */
+.dragging {
+  opacity: 0.5;
+  background: #f8fafc;
 }
