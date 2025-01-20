@@ -10,35 +10,31 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   padding: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .todo-section:hover {
-  transform: translateY(-2px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Section title */
-h1, h2 {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  font-weight: 600;
-  margin-bottom: 1rem;
 }
 
 /* Todo items */
 .todo-item {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s ease;
   display: flex;
   align-items: flex-start;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.2s ease;
+  min-height: 3rem;
 }
 
-.todo-item:last-child {
-  border-bottom: none;
+.todo-item:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Checkbox styling */
@@ -77,28 +73,29 @@ h1, h2 {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 1rem;
   line-height: 1.5;
-  color: #333;
+  color: #374151;
   flex: 1;
   margin: 0;
   padding: 0;
+  width: 100%;
+  min-height: 1.5rem;
 }
 
-/* Completed todo styling */
-.todo-completed {
-  text-decoration: line-through;
-  color: #9ca3af;
-}
-
-/* Input fields */
-.todo-input {
+/* Text editing */
+.todo-input,
+textarea.todo-input {
   width: 100%;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 1rem;
-  padding: 0.75rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  line-height: 1.5;
+  padding: 0.5rem;
+  margin: -0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
   background: white;
+  min-height: 1.5rem;
+  resize: none;
+  transition: all 0.2s ease;
 }
 
 .todo-input:focus {
@@ -107,12 +104,28 @@ h1, h2 {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Completed todo styling */
+.todo-completed {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+/* Section title */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f3f4f6;
+  width: 100%;
+}
+
 /* Add buttons */
 .add-button {
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 0.875rem;
   font-weight: 500;
   color: #3b82f6;
@@ -128,46 +141,46 @@ h1, h2 {
   color: #2563eb;
 }
 
-/* Timestamp styling */
-.todo-timestamp {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-left: 0.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+/* Offline indicator */
+.offline-indicator {
+  background: white;
+  border-left: 4px solid #3b82f6;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.todo-item:hover .todo-timestamp {
-  opacity: 1;
+.offline-indicator p {
+  color: #1f2937;
+  margin: 0;
 }
 
-/* Link styling */
-.todo-link {
-  color: #3b82f6;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  transition: color 0.2s ease;
-}
-
-.todo-link:hover {
+.offline-indicator .title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
   color: #2563eb;
-  text-decoration: underline;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.todo-item {
-  animation: fadeIn 0.3s ease;
 }
 
 /* Drag and drop styling */
 .dragging {
   opacity: 0.5;
   background: #f8fafc;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.todo-item {
+  animation: fadeIn 0.3s ease;
 }

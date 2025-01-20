@@ -8,7 +8,7 @@ import {
   saveLocalSection,
   saveLocalTodo,
 } from "../../utils/localDatabase";
-import { shortenUrl } from '../utils/urlUtils';
+import { shortenUrl } from "../utils/urlUtils";
 import {
   DragDropContext,
   Droppable,
@@ -679,10 +679,7 @@ const TodoApp: React.FC = () => {
 
   if (!user) {
     return (
-      <div
-        data-testid="todo-app"
-        className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6"
-      >
+      <div data-testid="todo-app" className="min-h-screen py-12 px-6">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-2xl overflow-hidden p-6">
           <h2 className="text-2xl font-serif text-gray-800 mb-6">
             Sign Up or Sign In
@@ -786,33 +783,14 @@ const TodoApp: React.FC = () => {
   };
 
   return (
-    <div
-      data-testid="todo-app"
-      className="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 py-12 px-6"
-    >
+    <div data-testid="todo-app" className="min-h-screen py-12 px-6">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-        {/* Notebook holes */}
-        <div className="absolute left-4 top-4 bottom-4 flex flex-col justify-around">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="w-4 h-4 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 shadow-inner"
-            />
-          ))}
-        </div>
-
-        {/* Red margin line */}
-        <div className="absolute left-16 top-0 bottom-0 w-0.5 bg-red-400 opacity-60"></div>
-
-        {/* Content container with proper padding for holes */}
-        <div className="pl-24 pr-8 py-8 notebook-lines relative">
+        {/* Main content container */}
+        <div className="py-8 px-4 relative">
           {/* Offline indicator */}
           {isOffline && (
-            <div
-              className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4"
-              role="alert"
-            >
-              <p className="font-bold">Offline Mode</p>
+            <div className="offline-indicator" role="alert">
+              <p className="title">Offline Mode</p>
               <p>
                 You're currently working offline. Changes will be synced when
                 you're back online.
@@ -832,10 +810,8 @@ const TodoApp: React.FC = () => {
           )}
 
           {/* Header area */}
-          <div className="relative mb-12">
-            <h1 className="text-4xl font-serif text-gray-800 tracking-wide">
-              Elad's Notes
-            </h1>
+          <div className="mb-8">
+            <h1 className="text-3xl font-semibold text-gray-900">My Tasks</h1>
           </div>
 
           {/* Controls line */}
@@ -882,9 +858,9 @@ const TodoApp: React.FC = () => {
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="space-y-4">
               {filteredSections.map((section, index) => (
-                <div key={section.id} className="relative">
+                <div key={section.id} className="todo-section">
                   {/* Section Header */}
-                  <div className="flex items-center justify-between mb-4 group notebook-line">
+                  <div className="flex items-center justify-between mb-4 group">
                     {editingSectionId === section.id ? (
                       <input
                         type="text"
@@ -907,12 +883,12 @@ const TodoApp: React.FC = () => {
                             finishEditingSection(section.id, section.title);
                           }
                         }}
-                        className="text-2xl font-serif text-gray-700 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                        className="text-2xl font-medium text-gray-900 bg-transparent border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none w-full"
                         autoFocus
                       />
                     ) : (
                       <h2
-                        className="text-2xl font-serif text-gray-700 group-hover:text-gray-900 transition-colors cursor-pointer"
+                        className="section-title"
                         onClick={() => startEditingSection(section.id)}
                       >
                         {section.title}
@@ -969,13 +945,9 @@ const TodoApp: React.FC = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`notebook-line py-2 px-2 rounded
-                                           hover:bg-blue-50 transition-colors duration-200 group
-                                           ${
-                                             snapshot.isDragging
-                                               ? "bg-blue-100 shadow-md"
-                                               : ""
-                                           }`}
+                                className={`todo-item ${
+                                  snapshot.isDragging ? "dragging" : ""
+                                }`}
                               >
                                 {renderTodoItem(section, todo)}
                               </div>
