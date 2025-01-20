@@ -55,6 +55,7 @@ interface TodoSection {
   id: number;
   title: string;
   todos: Todo[];
+  order: number;
 }
 
 const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
@@ -137,6 +138,7 @@ const TodoApp: React.FC = () => {
   const filtersRef = useRef<HTMLDivElement>(null);
   const [isOffline] = useState(!navigator.onLine);
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
+  const [newSectionTitle, setNewSectionTitle] = useState<string>("");
 
   const fetchSections = useCallback(async () => {
     if (!user) return;
@@ -823,6 +825,139 @@ const TodoApp: React.FC = () => {
     );
   };
 
+  const renderAddTodoInput = (sectionId: number) => {
+    if (newTodoSectionId !== sectionId) return null;
+    return (
+      <input
+        ref={newTodoInputRef}
+        type="text"
+        value={newTodoText}
+        onChange={(e) => setNewTodoText(e.target.value)}
+        onBlur={() => handleNewTodoBlur(sectionId)}
+        onKeyPress={(e) => handleNewTodoKeyPress(e, sectionId)}
+        className="new-todo-input"
+        placeholder="What needs to be done?"
+        autoFocus
+      />
+    );
+  };
+
+  const renderAddTodoLink = (sectionId: number) => {
+    if (newTodoSectionId === sectionId) return null;
+    return (
+      <button
+        className="add-item-link"
+        onClick={() => setNewTodoSectionId(sectionId)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Add Item
+      </button>
+    );
+  };
+
+  const renderAddSection = () => {
+    if (editingSectionId === -1) {
+      return (
+        <div className="add-section">
+          <input
+            type="text"
+            value={newSectionTitle}
+            onChange={(e) => setNewSectionTitle(e.target.value)}
+            onBlur={handleAddSection}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                handleAddSection();
+              }
+            }}
+            className="new-todo-input"
+            placeholder="Enter section title..."
+            autoFocus
+          />
+        </div>
+      );
+    }
+
+    return (
+      <button className="add-button" onClick={() => setEditingSectionId(-1)}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Add Section
+      </button>
+    );
+  };
+
+  const handleAddSection = async () => {
+    try {
+      const result = await supabase
+        .from("sections")
+        .insert({ title: newSectionTitle })
+        .select()
+        .single();
+
+      if (result.error) {
+        console.error("Error adding section:", result.error);
+        return;
+      }
+
+      setSections((prevSections) => [
+        ...prevSections,
+        { ...result.data, todos: [] },
+      ]);
+      setEditingSectionId(null);
+    } catch (error) {
+      console.error("Error adding section:", error);
+    }
+  };
+
+  const addSection = async () => {
+    try {
+      // Get the minimum order value and subtract 1 to place at top
+      const minOrder =
+        sections.length > 0
+          ? Math.min(...sections.map((s) => s.order || 0))
+          : 0;
+      const newOrder = minOrder - 1;
+
+      const result = await supabase
+        .from("sections")
+        .insert({ title: "New Section", order: newOrder })
+        .select()
+        .single();
+
+      if (result.error) {
+        console.error("Error adding section:", result.error);
+        return;
+      }
+
+      setSections((prevSections) => [
+        { ...result.data, todos: [] },
+        ...prevSections,
+      ]);
+    } catch (error) {
+      console.error("Error adding section:", error);
+    }
+  };
+
   if (!user) {
     return (
       <div data-testid="todo-app" className="min-h-screen py-12 px-6">
@@ -932,28 +1067,6 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const addSection = async () => {
-    try {
-      const result = await supabase
-        .from("sections")
-        .insert({ title: "New Section" })
-        .select()
-        .single();
-
-      if (result.error) {
-        console.error("Error adding section:", result.error);
-        return;
-      }
-
-      setSections((prevSections) => [
-        ...prevSections,
-        { ...result.data, todos: [] },
-      ]);
-    } catch (error) {
-      console.error("Error adding section:", error);
-    }
-  };
-
   return (
     <div data-testid="todo-app" className="min-h-screen py-12 px-6">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -1029,12 +1142,7 @@ const TodoApp: React.FC = () => {
 
           {/* Add Section Button */}
           <div className="notebook-line flex items-center mb-4">
-            <button
-              onClick={addSection}
-              className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-            >
-              + Add Section
-            </button>
+            {renderAddSection()}
           </div>
 
           <DragDropContext onDragEnd={onDragEnd}>
@@ -1141,39 +1249,11 @@ const TodoApp: React.FC = () => {
                           </Draggable>
                         ))}
                         {provided.placeholder}
-                        {newTodoSectionId === section.id && (
-                          <div className="notebook-line flex items-center">
-                            <div className="todo-checkbox"></div>
-                            <input
-                              ref={newTodoInputRef}
-                              type="text"
-                              value={newTodoText}
-                              onChange={handleNewTodoChange}
-                              onBlur={() => handleNewTodoBlur(section.id)}
-                              onKeyPress={(e) =>
-                                handleNewTodoKeyPress(e, section.id)
-                              }
-                              className="flex-1 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 text-gray-600 text-lg"
-                              placeholder="New todo"
-                              autoFocus
-                            />
-                          </div>
-                        )}
+                        {renderAddTodoInput(section.id)}
+                        {!newTodoSectionId && renderAddTodoLink(section.id)}
                       </div>
                     )}
                   </Droppable>
-
-                  {/* Add Todo Button */}
-                  {newTodoSectionId !== section.id && (
-                    <div className="notebook-line flex items-center">
-                      <button
-                        onClick={() => addEmptyTodo(section.id)}
-                        className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-                      >
-                        + Add
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

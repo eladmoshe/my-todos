@@ -152,24 +152,73 @@ textarea.todo-input {
   width: 100%;
 }
 
+/* Add section styling */
+.add-section {
+  background: #ffffff;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 2px dashed #e5e7eb;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.add-section:hover {
+  border-color: #4f46e5;
+  background: #f5f3ff;
+}
+
 /* Add buttons */
 .add-button {
   display: inline-flex;
   align-items: center;
-  padding: 0.625rem 1.25rem;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: #4f46e5;
   background: #f5f3ff;
-  border: none;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  gap: 0.5rem;
 }
 
 .add-button:hover {
   background: #ede9fe;
   color: #4338ca;
+  border-color: #4f46e5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+}
+
+.add-button:active {
+  transform: translateY(0);
+}
+
+/* New todo input styling */
+.new-todo-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.new-todo-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.new-todo-input::placeholder {
+  color: #9ca3af;
 }
 
 /* Offline indicator */
@@ -253,6 +302,40 @@ textarea.todo-input {
 .age-badge-older {
   background-color: rgba(185, 28, 28, 0.8);
   color: rgb(255, 255, 255);
+}
+
+/* Add item link styling */
+.add-item-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  color: #4f46e5;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.add-item-link:hover {
+  background: #f5f3ff;
+  border-color: #4f46e5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+}
+
+.add-item-link:active {
+  transform: translateY(0);
+}
+
+.add-item-link svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
 }
 
 /* Skeleton Loading Animation */
