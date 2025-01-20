@@ -120,6 +120,7 @@ const TodoApp: React.FC = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
   const [isOffline] = useState(!navigator.onLine);
+  const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
 
   const fetchSections = useCallback(async () => {
     if (!user) return;
@@ -310,6 +311,10 @@ const TodoApp: React.FC = () => {
   };
 
   const checkTodo = async (sectionId: number, todoId: number) => {
+    // Set the completing state to trigger animation
+    setCompletingTodoId(todoId);
+
+    // Wait for animation to complete before updating state
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("todos")
@@ -317,6 +322,9 @@ const TodoApp: React.FC = () => {
       .eq("id", todoId)
       .select()
       .single();
+
+    // Wait for the animation to complete
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     if (error) {
       console.error("Error updating todo:", error);
@@ -336,6 +344,7 @@ const TodoApp: React.FC = () => {
         )
       );
     }
+    setCompletingTodoId(null);
   };
 
   const deleteTodo = async (sectionId: number, todoId: number) => {
@@ -596,9 +605,12 @@ const TodoApp: React.FC = () => {
   };
 
   const renderTodoItem = (section: TodoSection, todo: Todo) => {
+    const isCompleting = completingTodoId === todo.id;
     return (
       <div
-        className={`todo-item-container ${todo.completed ? "opacity-50" : ""}`}
+        className={`todo-item-container ${todo.completed ? "opacity-50" : ""} ${
+          isCompleting ? "completing" : ""
+        }`}
       >
         <input
           type="checkbox"
@@ -942,6 +954,10 @@ const TodoApp: React.FC = () => {
                                 {...provided.dragHandleProps}
                                 className={`todo-item ${
                                   snapshot.isDragging ? "dragging" : ""
+                                } ${
+                                  completingTodoId === todo.id
+                                    ? "completing"
+                                    : ""
                                 }`}
                               >
                                 {renderTodoItem(section, todo)}
