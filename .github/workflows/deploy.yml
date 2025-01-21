@@ -41,6 +41,8 @@ jobs:
           PROJECT_ID: tkcfadcfwizapyymwdnu
         run: |
           supabase login --token $SUPABASE_ACCESS_TOKEN
+          echo "Linking project..."
+          supabase link --project-ref $PROJECT_ID
           echo "Uploading files..."
           cd build
           # Upload all files
