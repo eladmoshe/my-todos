@@ -1,12 +1,21 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import App from "./App";
+import App from "./frontend/App";
 import TodoApp from "./frontend/components/TodoApp";
 import supabase from "./supabaseClient";
 import { User, UserResponse } from "@supabase/supabase-js";
 
-// Mock the entire supabaseClient module
+// Mock console.error to avoid noise in test output
+const originalError = console.error;
+beforeAll(() => {
+  console.error = jest.fn();
+});
+
+afterAll(() => {
+  console.error = originalError;
+});
+
 jest.mock("./supabaseClient", () => ({
   __esModule: true,
   default: {
@@ -25,8 +34,7 @@ jest.mock("./supabaseClient", () => ({
     }),
   },
 }));
-//
-// Mock the TodoApp component
+
 jest.mock("./frontend/components/TodoApp", () => {
   return {
     __esModule: true,
@@ -36,13 +44,7 @@ jest.mock("./frontend/components/TodoApp", () => {
 
 describe("App Component", () => {
   beforeEach(() => {
-    // Reset all mocks before each test
-    jest.resetAllMocks();
-    jest.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
   it("renders without crashing", () => {
@@ -81,11 +83,13 @@ describe("App Component", () => {
       data: { user: null },
       error: null,
     } as unknown as UserResponse);
+    
     (TodoApp as jest.Mock).mockImplementation(() => {
       throw new Error("Test error");
     });
 
     render(<App />);
+    
     expect(screen.getByText("Sorry.. there was an error")).toBeInTheDocument();
   });
 
