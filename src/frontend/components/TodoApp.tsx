@@ -10,7 +10,7 @@ import {
   saveLocalTodo,
 } from "../../utils/localDatabase";
 import { shortenUrl } from "../utils/urlUtils";
-import { format, parseISO, isValid, parse } from "date-fns"; // Make sure to install this package: npm install date-fns
+import { format, parseISO, isValid, parse, formatDistanceToNow } from "date-fns"; // Make sure to install this package: npm install date-fns
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
@@ -135,6 +135,7 @@ const TodoApp: React.FC = () => {
   const [isOffline] = useState(!navigator.onLine);
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [newSectionTitle, setNewSectionTitle] = useState<string>("");
+  const [timeRefresh, setTimeRefresh] = useState(0);
 
   const fetchSections = useCallback(async () => {
     if (!user) return;
@@ -728,6 +729,53 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const isRecentDate = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    const distance = formatDistanceToNow(date);
+    return distance.includes('minute') || distance.includes('hour');
+  };
+
+  const hasRecentItems = useCallback(() => {
+    return sections.some(section =>
+      section.todos.some(todo => 
+        isRecentDate(todo.created_at) || (todo.completed && isRecentDate(todo.completed_at!))
+      )
+    );
+  }, [sections]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    if (hasRecentItems()) {
+      intervalId = setInterval(() => {
+        setTimeRefresh(prev => prev + 1);
+      }, 60000); // Update every minute
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [hasRecentItems]);
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    const distance = formatDistanceToNow(date, { addSuffix: true });
+    
+    // Replace "1 day ago" with "yesterday"
+    if (distance === "1 day ago") {
+      return "yesterday";
+    }
+    
+    // Remove "about" from hour-based times
+    if (distance.includes("hours ago")) {
+      return distance.replace("about ", "");
+    }
+    
+    return distance;
+  };
+
   const formatCreatedAt = (timestamp: string) => {
     return format(parseISO(timestamp), "MMM d, yyyy 'at' h:mm a");
   };
@@ -821,6 +869,8 @@ const TodoApp: React.FC = () => {
                   // Auto-resize the textarea
                   e.target.style.height = '0px';
                   e.target.style.height = e.target.scrollHeight + 'px';
+                  const length = e.target.value.length;
+                  e.target.setSelectionRange(length, length);
                 }}
                 onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
                 onKeyPress={(e) =>
@@ -871,10 +921,13 @@ const TodoApp: React.FC = () => {
               placeholder="YYYY-MM-DD"
             />
           ) : (
-            <span onClick={() => startEditingDate(todo.id)}>
+            <span 
+              onClick={() => startEditingDate(todo.id)}
+              title={format(parseISO(todo.completed ? todo.completed_at! : todo.created_at), "MMM d, yyyy 'at' h:mm a")}
+            >
               {todo.completed 
-                ? `Completed: ${format(parseISO(todo.completed_at!), "MMM d, yyyy")}`
-                : format(parseISO(todo.created_at), "MMM d, yyyy")}
+                ? `Completed ${formatTimeAgo(todo.completed_at!)}`
+                : formatTimeAgo(todo.created_at)}
             </span>
           )}
         </div>
