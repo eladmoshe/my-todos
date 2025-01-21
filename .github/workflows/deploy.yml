@@ -1,0 +1,46 @@
+name: Deploy to Supabase
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy Static Files
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_ID: tkcfadcfwizapyymwdnu
+        run: |
+          supabase login --access-token $SUPABASE_ACCESS_TOKEN
+          supabase storage create-bucket www --public || true
+          cd build
+          find . -type f -exec supabase storage upload --bucket www --path {} --file {} \;
