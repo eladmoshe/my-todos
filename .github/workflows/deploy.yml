@@ -43,12 +43,9 @@ jobs:
           supabase login --token $SUPABASE_ACCESS_TOKEN
           echo "Uploading files..."
           cd build
-          # First, ensure the target directory is empty
-          supabase storage rm --recursive www/
           # Upload all files
           for file in $(find . -type f); do
             relative_path="${file#./}"
             echo "Uploading $relative_path..."
-            mkdir -p $(dirname "$relative_path")
-            supabase storage ls "www/$relative_path" > /dev/null 2>&1 || supabase storage cp "./$relative_path" "www/$relative_path"
+            supabase --experimental storage cp "./$relative_path" "www/$relative_path"
           done
