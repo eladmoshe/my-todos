@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+// Import React explicitly if using JSX
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import "./todo-styles.css";
 import supabase, { signUp, signIn } from "../../supabaseClient";
 import {
@@ -455,7 +456,7 @@ const TodoApp: React.FC = () => {
     setEditingTodoId(null);
   };
 
-  const handleAuth = async (e: React.FormEvent, isSignUp: boolean) => {
+  const handleAuth = async (e: React.FormEvent, isSignUp: boolean): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -589,12 +590,13 @@ const TodoApp: React.FC = () => {
     );
   };
 
-  const renderAddTodoLink = (sectionId: number) => {
+  const renderAddTodoLink = (sectionId: number): JSX.Element | null => {
     if (newTodoSectionId === sectionId) return null;
     return (
       <button
         className="add-item-link"
         onClick={() => setNewTodoSectionId(sectionId)}
+        aria-label="Add new todo item"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -653,8 +655,11 @@ const TodoApp: React.FC = () => {
     );
   };
 
-  const handleAddSection = async () => {
+  const handleAddSection = async (): Promise<void> => {
     try {
+      if (!newSectionTitle.trim()) {
+        return;
+      }
       // Get the minimum order value and subtract 1 to place at top
       const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
       const newOrder = minOrder - 1;
@@ -825,27 +830,26 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const handleTodoKeyPress = async (
-    e: React.KeyboardEvent,
+  const handleTodoKeyPress = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
     sectionId: number,
     todoId: number,
     newText: string
-  ) => {
-    if (e.key === "Enter") {
+  ): void => {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      await finishEditingTodo(sectionId, todoId, newText);
+      finishEditingTodo(sectionId, todoId, newText);
     }
   };
 
   useEffect(() => {
     if (editingTodoId !== null && editInputRef.current) {
-      editInputRef.current.focus();
-      // Set initial height to match content
-      editInputRef.current.style.height = 'auto';
-      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
-      // Position cursor at end of text
-      const length = editInputRef.current.value.length;
-      editInputRef.current.setSelectionRange(length, length);
+      const input = editInputRef.current;
+      input.focus();
+      input.style.height = 'auto';
+      input.style.height = `${input.scrollHeight}px`;
+      const length = input.value.length;
+      input.setSelectionRange(length, length);
     }
   }, [editingTodoId]);
 
@@ -940,19 +944,22 @@ const TodoApp: React.FC = () => {
   }
 
   // Add this custom Toggle component
-  const Toggle: React.FC<{ checked: boolean; onChange: () => void }> = ({
-    checked,
-    onChange,
-  }) => (
+  const Toggle: React.FC<{
+    checked: boolean;
+    onChange: () => void;
+  }> = ({ checked, onChange }) => (
     <div
       className={`relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
-        checked ? "bg-blue-600" : "bg-gray-200"
+        checked ? 'bg-blue-600' : 'bg-gray-200'
       }`}
       onClick={onChange}
+      role="switch"
+      aria-checked={checked}
+      tabIndex={0}
     >
       <span
         className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
-          checked ? "translate-x-4" : "translate-x-0"
+          checked ? 'translate-x-4' : 'translate-x-0'
         }`}
       />
     </div>
