@@ -132,6 +132,7 @@ textarea.todo-input {
   min-height: 1.5rem;
   resize: none;
   transition: all 0.2s ease;
+  overflow: hidden; /* Add this line to remove scrollbars */
 }
 
 .todo-input:focus {
