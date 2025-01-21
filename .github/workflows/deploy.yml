@@ -37,17 +37,19 @@ jobs:
 
       - name: Deploy Static Files
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           PROJECT_ID: tkcfadcfwizapyymwdnu
         run: |
-          supabase login --token $SUPABASE_ACCESS_TOKEN
-          echo "Linking project..."
-          supabase link --project-ref $PROJECT_ID
           echo "Uploading files..."
           cd build
           # Upload all files
           for file in $(find . -type f); do
             relative_path="${file#./}"
             echo "Uploading $relative_path..."
-            supabase --experimental storage cp "./$relative_path" "www/$relative_path"
+            curl -X POST \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              -H "Content-Type: $(file -b --mime-type "$file")" \
+              -T "$file" \
+              "${SUPABASE_URL}/storage/v1/object/www/$relative_path"
           done
