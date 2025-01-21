@@ -35,6 +35,18 @@ jobs:
         with:
           version: latest
 
+      - name: Create Storage Bucket
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Creating storage bucket if it doesn't exist..."
+          curl -X POST \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"www","public":true}' \
+            "${SUPABASE_URL}/storage/v1/bucket"
+
       - name: Deploy Static Files
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -59,7 +71,7 @@ jobs:
               -H "Authorization: Bearer $SUPABASE_KEY" \
               -H "Content-Type: $content_type" \
               -T "$file" \
-              "${SUPABASE_URL}/storage/v1/object/public/www/$relative_path" 2>&1)
+              "${SUPABASE_URL}/storage/v1/object/www/$relative_path" 2>&1)
             
             echo "Response for $relative_path:"
             echo "$response"
