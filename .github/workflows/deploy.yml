@@ -15,6 +15,7 @@ jobs:
     env:
       REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      PUBLIC_URL: /my-todos
 
     steps:
       - uses: actions/checkout@v3
@@ -37,6 +38,8 @@ jobs:
           CI=false npm run build
           echo "Build complete. Contents of build directory:"
           ls -la build/
+          # Create a .nojekyll file to prevent GitHub Pages from using Jekyll
+          touch build/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
