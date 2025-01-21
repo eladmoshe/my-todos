@@ -10,7 +10,7 @@ import {
   saveLocalTodo,
 } from "../../utils/localDatabase";
 import { shortenUrl } from "../utils/urlUtils";
-import { format, parseISO } from "date-fns"; // Make sure to install this package: npm install date-fns
+import { format, parseISO, isValid, parse } from "date-fns"; // Make sure to install this package: npm install date-fns
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
@@ -119,6 +119,7 @@ const TodoApp: React.FC = () => {
   const [sections, setSections] = useState<TodoSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
+  const [editingDateId, setEditingDateId] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -454,6 +455,46 @@ const TodoApp: React.FC = () => {
       );
     }
     setEditingTodoId(null);
+  };
+
+  const startEditingDate = (todoId: number) => {
+    setEditingDateId(todoId);
+  };
+
+  const finishEditingDate = async (sectionId: number, todoId: number, newDateStr: string) => {
+    // Try to parse the date string
+    const parsedDate = parse(newDateStr, "yyyy-MM-dd", new Date());
+    
+    if (!isValid(parsedDate)) {
+      alert("Please enter a valid date in the format YYYY-MM-DD");
+      return;
+    }
+
+    const isoDate = parsedDate.toISOString();
+    
+    const { error } = await supabase
+      .from("todos")
+      .update({ created_at: isoDate })
+      .eq("id", todoId);
+
+    if (error) {
+      console.error("Error updating todo date:", error);
+      alert("Failed to update the date. Please try again.");
+    } else {
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                todos: section.todos.map((todo) =>
+                  todo.id === todoId ? { ...todo, created_at: isoDate } : todo
+                ),
+              }
+            : section
+        )
+      );
+    }
+    setEditingDateId(null);
   };
 
   const handleAuth = async (e: React.FormEvent, isSignUp: boolean): Promise<void> => {
@@ -815,11 +856,28 @@ const TodoApp: React.FC = () => {
             </button>
           </div>
         </div>
-        <span className="todo-timestamp">
-          {todo.completed
-            ? `Completed: ${formatCreatedAt(todo.completed_at!)}`
-            : formatCreatedAt(todo.created_at)}
-        </span>
+        <div className="todo-date">
+          {editingDateId === todo.id ? (
+            <input
+              type="text"
+              defaultValue={format(parseISO(todo.created_at), "yyyy-MM-dd")}
+              onBlur={(e) => finishEditingDate(section.id, todo.id, e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  finishEditingDate(section.id, todo.id, e.currentTarget.value);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="YYYY-MM-DD"
+            />
+          ) : (
+            <span onClick={() => startEditingDate(todo.id)}>
+              {todo.completed 
+                ? `Completed: ${format(parseISO(todo.completed_at!), "MMM d, yyyy")}`
+                : format(parseISO(todo.created_at), "MMM d, yyyy")}
+            </span>
+          )}
+        </div>
       </div>
     );
   };

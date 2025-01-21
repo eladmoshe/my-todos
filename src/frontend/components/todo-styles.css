@@ -477,3 +477,32 @@ textarea.todo-input {
   background-color: rgba(185, 28, 28, 0.8);
   color: rgb(255, 255, 255);
 }
+
+/* Date editing styles */
+.todo-date {
+  margin-left: 8px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.todo-date span {
+  cursor: pointer;
+}
+
+.todo-date span:hover {
+  text-decoration: underline;
+}
+
+.todo-date input {
+  width: 100px;
+  padding: 2px 4px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.todo-date input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+}
