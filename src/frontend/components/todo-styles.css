@@ -23,8 +23,8 @@
   border: 1px solid transparent;
   transition: all 0.2s ease;
   display: flex;
-  align-items: flex-start;
-  min-height: 3rem;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .todo-item:hover {
@@ -34,9 +34,16 @@
 /* Todo item container */
 .todo-item-container {
   display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.25rem;
+}
+
+/* Main content row */
+.todo-main-content {
+  display: flex;
   align-items: flex-start;
   width: 100%;
-  gap: 1rem;
 }
 
 /* Todo content wrapper */
@@ -45,16 +52,19 @@
   align-items: flex-start;
   flex: 1;
   min-width: 0;
-  /* Prevents flex item from overflowing */
 }
 
-/* Todo item content */
-.todo-item-content {
-  flex: 1;
-  padding: 0.25rem 0;
-  min-width: 0;
-  /* Prevents text from overflowing */
-  word-wrap: break-word;
+/* Todo checkbox */
+.todo-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  margin-right: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
 }
 
 /* Delete button */
@@ -69,19 +79,14 @@
   opacity: 1;
 }
 
-/* Checkbox styling */
-.todo-checkbox {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #d1d5db;
-  border-radius: 4px;
-  margin-right: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  flex-shrink: 0;
+/* Todo timestamp */
+.todo-timestamp {
+  font-size: 0.75rem;
+  color: #6B7280;
+  margin-left: 2.5rem;
 }
 
+/* Checkbox styling */
 .todo-checkbox:checked {
   background-color: #4f46e5;
   border-color: #4f46e5;

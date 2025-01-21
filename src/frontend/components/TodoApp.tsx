@@ -796,63 +796,65 @@ const TodoApp: React.FC = () => {
           isCompleting ? "completing" : ""
         }`}
       >
-        <input
-          type="checkbox"
-          checked={todo.completed}
-          onChange={() => checkTodo(section.id, todo.id)}
-          className="todo-checkbox"
-        />
-        <div className="todo-content-wrapper">
-          {editingTodoId === todo.id ? (
-            <textarea
-              ref={editInputRef}
-              value={todo.text}
-              onChange={(e) => {
-                const newText = e.target.value;
-                setSections(
-                  sections.map((s) =>
-                    s.id === section.id
-                      ? {
-                          ...s,
-                          todos: s.todos.map((t) =>
-                            t.id === todo.id ? { ...t, text: newText } : t
-                          ),
-                        }
-                      : s
-                  )
-                );
-              }}
-              onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
-              onKeyPress={(e) =>
-                handleTodoKeyPress(e, section.id, todo.id, todo.text)
-              }
-              className="todo-input"
-              autoFocus
-            />
-          ) : (
-            <div
-              className={`todo-item-content ${
-                todo.completed ? "todo-completed" : ""
-              }`}
-              onClick={(e) => handleTodoClick(e, todo.id)}
-            >
-              <span className="todo-text-content">
-                {renderTextWithLinks(todo.text)}
-              </span>
-              {weeksOld > 0 && (
-                <span className={`age-badge ${getAgeBadgeClass(weeksOld)}`}>
-                  {weeksOld}w
+        <div className="todo-main-content">
+          <input
+            type="checkbox"
+            checked={todo.completed}
+            onChange={() => checkTodo(section.id, todo.id)}
+            className="todo-checkbox"
+          />
+          <div className="todo-content-wrapper">
+            {editingTodoId === todo.id ? (
+              <textarea
+                ref={editInputRef}
+                value={todo.text}
+                onChange={(e) => {
+                  const newText = e.target.value;
+                  setSections(
+                    sections.map((s) =>
+                      s.id === section.id
+                        ? {
+                            ...s,
+                            todos: s.todos.map((t) =>
+                              t.id === todo.id ? { ...t, text: newText } : t
+                            ),
+                          }
+                        : s
+                    )
+                  );
+                }}
+                onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
+                onKeyPress={(e) =>
+                  handleTodoKeyPress(e, section.id, todo.id, todo.text)
+                }
+                className="todo-input"
+                autoFocus
+              />
+            ) : (
+              <div
+                className={`todo-item-content ${
+                  todo.completed ? "todo-completed" : ""
+                }`}
+                onClick={(e) => handleTodoClick(e, todo.id)}
+              >
+                <span className="todo-text-content">
+                  {renderTextWithLinks(todo.text)}
                 </span>
-              )}
-            </div>
-          )}
-          <button
-            onClick={() => deleteTodo(section.id, todo.id)}
-            className="ml-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-            title="Delete Todo"
-          >
-            <TrashIcon className="w-5 h-5" />
-          </button>
+                {weeksOld > 0 && (
+                  <span className={`age-badge ${getAgeBadgeClass(weeksOld)}`}>
+                    {weeksOld}w
+                  </span>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => deleteTodo(section.id, todo.id)}
+              className="ml-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+              title="Delete Todo"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <span className="todo-timestamp">
           {todo.completed
