@@ -772,6 +772,9 @@ const TodoApp: React.FC = () => {
                         : s
                     )
                   );
+                  // Auto-resize the textarea
+                  e.target.style.height = '0px';
+                  e.target.style.height = e.target.scrollHeight + 'px';
                 }}
                 onBlur={() => finishEditingTodo(section.id, todo.id, todo.text)}
                 onKeyPress={(e) =>
@@ -779,6 +782,7 @@ const TodoApp: React.FC = () => {
                 }
                 className="todo-input"
                 autoFocus
+                rows={1}
               />
             ) : (
               <div
