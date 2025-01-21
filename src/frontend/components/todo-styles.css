@@ -247,68 +247,6 @@ textarea.todo-input {
   color: #2563eb;
 }
 
-/* Drag and drop styling */
-.dragging {
-  opacity: 0.5;
-  background: #f8fafc;
-}
-
-/* Age badge styling */
-.age-badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 12px;
-  margin-left: 8px;
-  font-weight: 500;
-  vertical-align: middle;
-}
-
-.age-badge-1 {
-  background-color: rgba(255, 251, 235, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-2 {
-  background-color: rgba(254, 243, 199, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-3 {
-  background-color: rgba(253, 230, 138, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-4 {
-  background-color: rgba(252, 211, 77, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-5 {
-  background-color: rgba(251, 191, 36, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-6 {
-  background-color: rgba(245, 158, 11, 0.8);
-  color: rgb(146, 64, 14);
-}
-
-.age-badge-7 {
-  background-color: rgba(234, 88, 12, 0.8);
-  color: rgb(255, 255, 255);
-}
-
-.age-badge-8 {
-  background-color: rgba(217, 70, 7, 0.8);
-  color: rgb(255, 255, 255);
-}
-
-.age-badge-older {
-  background-color: rgba(185, 28, 28, 0.8);
-  color: rgb(255, 255, 255);
-}
-
 /* Add item link styling */
 .add-item-link {
   display: flex;
@@ -424,4 +362,60 @@ textarea.todo-input {
 
 .todo-item {
   animation: fadeIn 0.3s ease;
+}
+
+/* Age badge styling */
+.age-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin-left: 8px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.age-badge-1 {
+  background-color: rgba(255, 251, 235, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-2 {
+  background-color: rgba(254, 243, 199, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-3 {
+  background-color: rgba(253, 230, 138, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-4 {
+  background-color: rgba(252, 211, 77, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-5 {
+  background-color: rgba(251, 191, 36, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-6 {
+  background-color: rgba(245, 158, 11, 0.8);
+  color: rgb(146, 64, 14);
+}
+
+.age-badge-7 {
+  background-color: rgba(234, 88, 12, 0.8);
+  color: rgb(255, 255, 255);
+}
+
+.age-badge-8 {
+  background-color: rgba(217, 70, 7, 0.8);
+  color: rgb(255, 255, 255);
+}
+
+.age-badge-older {
+  background-color: rgba(185, 28, 28, 0.8);
+  color: rgb(255, 255, 255);
 }

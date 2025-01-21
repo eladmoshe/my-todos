@@ -9,12 +9,6 @@ import {
   saveLocalTodo,
 } from "../../utils/localDatabase";
 import { shortenUrl } from "../utils/urlUtils";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "react-beautiful-dnd";
 import { format, parseISO } from "date-fns"; // Make sure to install this package: npm install date-fns
 import {
   ArrowRightOnRectangleIcon,
@@ -409,50 +403,6 @@ const TodoApp: React.FC = () => {
     ...section,
     todos: section.todos.filter((todo) => showCompleted || !todo.completed),
   }));
-
-  const onDragEnd = async (result: DropResult) => {
-    const { source, destination } = result;
-
-    // If dropped outside the list
-    if (!destination) {
-      return;
-    }
-
-    // If dropped in the same position
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    const sourceSection = sections.find(
-      (s) => s.id.toString() === source.droppableId
-    );
-    const destSection = sections.find(
-      (s) => s.id.toString() === destination.droppableId
-    );
-
-    if (!sourceSection || !destSection) {
-      return;
-    }
-
-    const newSections = [...sections];
-    const [reorderedTodo] = sourceSection.todos.splice(source.index, 1);
-    destSection.todos.splice(destination.index, 0, reorderedTodo);
-
-    setSections(newSections);
-
-    // Update the database
-    const { error } = await supabase
-      .from("todos")
-      .update({ section_id: parseInt(destination.droppableId, 10) })
-      .eq("id", reorderedTodo.id);
-
-    if (error) {
-      console.error("Error updating todo:", error);
-    }
-  };
 
   const startEditingSection = (sectionId: number) => {
     setEditingSectionId(sectionId);
@@ -1078,119 +1028,87 @@ const TodoApp: React.FC = () => {
             {renderAddSection()}
           </div>
 
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="space-y-4">
-              {filteredSections.map((section, index) => (
-                <div key={section.id} className="todo-section">
-                  {/* Section Header */}
-                  <div className="flex items-center justify-between mb-4 group">
-                    {editingSectionId === section.id ? (
-                      <input
-                        type="text"
-                        value={section.title}
-                        onChange={(e) => {
-                          const newTitle = e.target.value;
-                          setSections(
-                            sections.map((s) =>
-                              s.id === section.id
-                                ? { ...s, title: newTitle }
-                                : s
-                            )
-                          );
-                        }}
-                        onBlur={() =>
-                          finishEditingSection(section.id, section.title)
+          <div className="space-y-4">
+            {filteredSections.map((section, index) => (
+              <div key={section.id} className="todo-section">
+                {/* Section Header */}
+                <div className="flex items-center justify-between mb-4 group">
+                  {editingSectionId === section.id ? (
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => {
+                        const newTitle = e.target.value;
+                        setSections(
+                          sections.map((s) =>
+                            s.id === section.id
+                              ? { ...s, title: newTitle }
+                              : s
+                          )
+                        );
+                      }}
+                      onBlur={() =>
+                        finishEditingSection(section.id, section.title)
+                      }
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          finishEditingSection(section.id, section.title);
                         }
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") {
-                            finishEditingSection(section.id, section.title);
-                          }
-                        }}
-                        className="text-2xl font-medium text-gray-900 bg-transparent border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none w-full"
-                        autoFocus
-                      />
-                    ) : (
-                      <h2
-                        className="section-title"
-                        onClick={() => startEditingSection(section.id)}
-                      >
-                        {section.title}
-                      </h2>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => reorderSection(section.id, "up")}
-                        className="text-gray-400 hover:text-blue-500 transition-colors duration-200
+                      }}
+                      className="text-2xl font-medium text-gray-900 bg-transparent border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none w-full"
+                      autoFocus
+                    />
+                  ) : (
+                    <h2
+                      className="section-title"
+                      onClick={() => startEditingSection(section.id)}
+                    >
+                      {section.title}
+                    </h2>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => reorderSection(section.id, "up")}
+                      className="text-gray-400 hover:text-blue-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
-                        title="Move Section Up"
-                        disabled={index === 0}
-                      >
-                        <ChevronUpIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => reorderSection(section.id, "down")}
-                        className="text-gray-400 hover:text-blue-500 transition-colors duration-200
+                      title="Move Section Up"
+                      disabled={index === 0}
+                    >
+                      <ChevronUpIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => reorderSection(section.id, "down")}
+                      className="text-gray-400 hover:text-blue-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
-                        title="Move Section Down"
-                        disabled={index === filteredSections.length - 1}
-                      >
-                        <ChevronDownIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => deleteSection(section.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors duration-200
+                      title="Move Section Down"
+                      disabled={index === filteredSections.length - 1}
+                    >
+                      <ChevronDownIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteSection(section.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
-                        title="Delete Section"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
+                      title="Delete Section"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
                   </div>
-
-                  {/* Todos Container */}
-                  <Droppable droppableId={section.id.toString()} type="todo">
-                    {(provided, snapshot) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className={`${
-                          snapshot.isDraggingOver ? "bg-blue-50" : ""
-                        } space-y-2`}
-                      >
-                        {section.todos.map((todo, index) => (
-                          <Draggable
-                            key={todo.id}
-                            draggableId={todo.id.toString()}
-                            index={index}
-                          >
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`todo-item ${
-                                  snapshot.isDragging ? "dragging" : ""
-                                } ${
-                                  completingTodoId === todo.id
-                                    ? "completing"
-                                    : ""
-                                }`}
-                              >
-                                {renderTodoItem(section, todo)}
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {renderAddTodoInput(section.id)}
-                        {!newTodoSectionId && renderAddTodoLink(section.id)}
-                      </div>
-                    )}
-                  </Droppable>
                 </div>
-              ))}
-            </div>
-          </DragDropContext>
+
+                {/* Todos Container */}
+                <div className="space-y-2">
+                  {section.todos.map((todo, index) => (
+                    <div key={todo.id} className="todo-item">
+                      {renderTodoItem(section, todo)}
+                    </div>
+                  ))}
+                  {renderAddTodoInput(section.id)}
+                  {!newTodoSectionId && renderAddTodoLink(section.id)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
