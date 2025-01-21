@@ -11,15 +11,15 @@ jobs:
     env:
       REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      
+
     steps:
       - uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install Dependencies
         run: npm ci
@@ -38,18 +38,49 @@ jobs:
       - name: Deploy Static Files
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PROJECT_ID: tkcfadcfwizapyymwdnu
         run: |
           echo "Uploading files..."
           cd build
-          # Upload all files
-          for file in $(find . -type f); do
-            relative_path="${file#./}"
+          
+          # Function to upload a file and check response
+          upload_file() {
+            local file="$1"
+            local relative_path="${file#./}"
             echo "Uploading $relative_path..."
-            curl -X POST \
-              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-              -H "Content-Type: $(file -b --mime-type "$file")" \
+            
+            # Get content type
+            content_type=$(file -b --mime-type "$file")
+            echo "Content type: $content_type"
+            
+            # Make the request and capture the response
+            response=$(curl -v -X POST \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Content-Type: $content_type" \
               -T "$file" \
-              "${SUPABASE_URL}/storage/v1/object/www/$relative_path"
+              "${SUPABASE_URL}/storage/v1/object/public/www/$relative_path" 2>&1)
+            
+            echo "Response for $relative_path:"
+            echo "$response"
+            
+            if echo "$response" | grep -q "HTTP/2 200"; then
+              echo " Successfully uploaded $relative_path"
+            else
+              echo " Failed to upload $relative_path"
+              exit 1
+            fi
+          }
+          
+          # Upload index.html first
+          if [ -f "index.html" ]; then
+            upload_file "index.html"
+          else
+            echo " index.html not found!"
+            exit 1
+          fi
+          
+          # Upload all other files
+          find . -type f ! -name "index.html" -print0 | while IFS= read -r -d '' file; do
+            upload_file "$file"
           done
