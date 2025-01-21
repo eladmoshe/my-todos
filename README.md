@@ -116,3 +116,5 @@ GitHub Actions workflows are configured for:
 ## License
 
 This project is licensed under the ISC License.
+
+[comment]: # (Deployment trigger timestamp: 2025-01-21T20:26:08+02:00)

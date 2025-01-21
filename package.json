@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "A TypeScript React Todo App",
+  "homepage": "https://eladmoshe.github.io/my-todos",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -83,6 +84,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001",
-  "homepage": "https://eladmoshe.github.io/my-todos"
+  "proxy": "http://localhost:3001"
 }
