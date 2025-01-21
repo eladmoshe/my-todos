@@ -44,7 +44,9 @@ jobs:
           echo "Creating storage bucket..."
           supabase storage list-buckets || true
           supabase storage delete-bucket www || true
-          supabase storage create-bucket www --public
+          supabase storage create-bucket www
+          echo "Making bucket public..."
+          supabase storage update-bucket www --public=true
           echo "Verifying bucket creation..."
           supabase storage list-buckets
           echo "Uploading files..."
