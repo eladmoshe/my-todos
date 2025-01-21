@@ -1,4 +1,4 @@
-name: Deploy to Supabase
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -12,7 +12,6 @@ jobs:
     env:
       REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      PUBLIC_URL: https://tkcfadcfwizapyymwdnu.supabase.co/storage/v1/object/public/www
 
     steps:
       - uses: actions/checkout@v3
@@ -32,71 +31,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create Storage Bucket
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "Creating storage bucket if it doesn't exist..."
-          curl -X POST \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"www","public":true}' \
-            "${SUPABASE_URL}/storage/v1/bucket" || true
-            
-          echo "Clearing existing files..."
-          # List all files
-          files=$(curl -s \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            "${SUPABASE_URL}/storage/v1/object/list/www")
-          
-          # Delete each file
-          echo "$files" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | while read -r file; do
-            if [ ! -z "$file" ]; then
-              echo "Deleting $file..."
-              curl -X DELETE \
-                -H "Authorization: Bearer $SUPABASE_KEY" \
-                "${SUPABASE_URL}/storage/v1/object/www/$file"
-            fi
-          done
-
-      - name: Deploy Static Files
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "Uploading files..."
-          cd build
-          
-          # Function to upload a file and check response
-          upload_file() {
-            local file="$1"
-            local relative_path="${file#./}"
-            echo "Uploading $relative_path..."
-            
-            # Get content type
-            content_type=$(file -b --mime-type "$file")
-            echo "Content type: $content_type"
-            
-            # Make the request and capture the response
-            response=$(curl -v -X PUT \
-              -H "Authorization: Bearer $SUPABASE_KEY" \
-              -H "Content-Type: $content_type" \
-              -T "$file" \
-              "${SUPABASE_URL}/storage/v1/object/www/$relative_path" 2>&1)
-            
-            echo "Response for $relative_path:"
-            echo "$response"
-            
-            if echo "$response" | grep -q "HTTP/2 200"; then
-              echo "✅ Successfully uploaded $relative_path"
-            else
-              echo "❌ Failed to upload $relative_path"
-              exit 1
-            fi
-          }
-          
-          # Upload all files
-          find . -type f -print0 | while IFS= read -r -d '' file; do
-            upload_file "$file"
-          done
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
