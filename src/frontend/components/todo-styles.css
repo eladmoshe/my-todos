@@ -178,12 +178,6 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.925rem;
-  line-height: 1.4;
-  font-family: inherit;
-  min-height: 1.4rem;
-  padding: 0;
-  margin: 0;
-  display: block;
 }
 
 .todo-item-content {
@@ -439,13 +433,13 @@ textarea.todo-input {
 
 /* Age badge styling */
 .age-badge {
+  display: inline;
   font-size: 0.75rem;
   padding: 2px 6px;
   border-radius: 12px;
-  margin-left: 8px;
+  margin-left: 4px;
   font-weight: 500;
-  vertical-align: middle;
-  display: inline-block;
+  white-space: nowrap;
 }
 
 .age-badge-1 {

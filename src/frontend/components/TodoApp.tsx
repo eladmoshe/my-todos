@@ -876,12 +876,12 @@ const TodoApp: React.FC = () => {
               >
                 <span className="todo-text-content">
                   {renderTextWithLinks(todo.text)}
+                  {weeksOld > 0 && (
+                    <span className={`age-badge ${getAgeBadgeClass(weeksOld)}`}>
+                      {weeksOld}w
+                    </span>
+                  )}
                 </span>
-                {weeksOld > 0 && (
-                  <span className={`age-badge ${getAgeBadgeClass(weeksOld)}`}>
-                    {weeksOld}w
-                  </span>
-                )}
               </div>
             )}
             <button
