@@ -1,16 +1,28 @@
 // Import React explicitly if using JSX
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import "./todo-styles.css";
-import supabase, { signUp, signIn } from "../../supabaseClient";
+import supabase, { 
+  signUp, 
+  signIn, 
+  getTodosTable, 
+  getSectionsTable,
+  Todo,
+  Section,
+  TodoSection,
+  BaseTodo,
+  BaseSection
+} from "../utils/supabaseClient";
 import {
   openLocalDatabase,
   getLocalSections,
   getLocalTodos,
   saveLocalSection,
   saveLocalTodo,
+  deleteLocalSection,
+  deleteLocalTodo,
 } from "../../utils/localDatabase";
 import { shortenUrl } from "../utils/urlUtils";
-import { format, parseISO, isValid, parse, formatDistanceToNow } from "date-fns"; // Make sure to install this package: npm install date-fns
+import { format, parseISO, isValid, parse, formatDistanceToNow } from "date-fns";
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
@@ -18,9 +30,20 @@ import {
   ChevronDownIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-// import { User } from "@supabase/supabase-js";
 
-const ChainIcon = () => (
+interface SlackPreviewProps {
+  url: string;
+}
+
+interface AuthListener {
+  data: {
+    subscription: {
+      unsubscribe: () => void;
+    };
+  };
+}
+
+const ChainIcon: React.FC = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="16"
@@ -37,21 +60,6 @@ const ChainIcon = () => (
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
   </svg>
 );
-
-interface Todo {
-  id: number;
-  text: string;
-  created_at: string; // This is the PostgreSQL timestamp string
-  completed: boolean;
-  completed_at: string | null;
-}
-
-interface TodoSection {
-  id: number;
-  title: string;
-  todos: Todo[];
-  order: number;
-}
 
 const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
   const [preview, setPreview] = useState<string | null>(null);
@@ -95,10 +103,6 @@ const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
   );
 };
 
-interface SlackPreviewProps {
-  url: string;
-}
-
 const LoadingSkeleton: React.FC = () => {
   return (
     <div className="todo-app">
@@ -140,40 +144,36 @@ const TodoApp: React.FC = () => {
   const fetchSections = useCallback(async () => {
     if (!user) return;
 
-    const { data: sectionsData, error: sectionsError } = await supabase
-      .from("sections")
+    const { data: rawSections, error: sectionsError } = await getSectionsTable()
       .select("*")
-      .order("order");
+      .order('order', { ascending: true });
 
     if (sectionsError) {
       console.error("Error fetching sections:", sectionsError);
       return;
     }
 
-    const { data: todosData, error: todosError } = await supabase
-      .from("todos")
+    const { data: rawTodos, error: todosError } = await getTodosTable()
       .select("*")
-      .order("id");
+      .order('id', { ascending: true });
 
     if (todosError) {
       console.error("Error fetching todos:", todosError);
       return;
     }
 
-    const combinedData = sectionsData.map((section) => ({
-      ...section,
-      todos: todosData.filter((todo) => todo.section_id === section.id),
+    // Ensure we have arrays even if data is null
+    const sections = (rawSections || []) as Section[];
+    const todos = (rawTodos || []) as Todo[];
+
+    const combinedData: TodoSection[] = sections.map(section => ({
+      id: section.id,
+      title: section.title,
+      order: section.order,
+      todos: todos.filter(todo => todo.section_id === section.id)
     }));
 
     setSections(combinedData);
-
-    // Save fetched data to local storage
-    for (const section of sectionsData) {
-      await saveLocalSection(section);
-    }
-    for (const todo of todosData) {
-      await saveLocalTodo(todo);
-    }
   }, [user]);
 
   useEffect(() => {
@@ -191,12 +191,10 @@ const TodoApp: React.FC = () => {
       }
     };
 
-    let authListener: {
-      data: { subscription: { unsubscribe: () => void } };
-    } | null = null;
+    let authListener: AuthListener | null = null;
 
     try {
-      authListener = supabase.auth.onAuthStateChange((event, session) => {
+      authListener = supabase.auth.onAuthStateChange((event: string, session: any) => {
         setUser(session?.user || null);
       });
     } catch (error) {
@@ -252,8 +250,7 @@ const TodoApp: React.FC = () => {
 
   const addTodo = async (sectionId: number, todoText: string) => {
     try {
-      const { data: newTodo, error } = await supabase
-        .from("todos")
+      const { data: newTodo, error } = await getTodosTable()
         .insert({ text: todoText, section_id: sectionId })
         .select()
         .single();
@@ -308,35 +305,77 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const deleteSection = async (sectionId: number) => {
-    const sectionToDelete = sections.find(
-      (section) => section.id === sectionId
-    );
-    if (!sectionToDelete) return;
+  const startEditingSection = (sectionId: number) => {
+    setEditingSectionId(sectionId);
+  };
 
-    if (sectionToDelete.todos.length > 0) {
-      const confirmDelete = window.confirm(
-        `This section contains ${sectionToDelete.todos.length} todo item(s). Are you sure you want to delete this section and all its todos?`
-      );
-      if (!confirmDelete) return;
-    }
+  const finishEditingSection = async (sectionId: number, newTitle: string) => {
+    setEditingSectionId(null);
+    if (!newTitle.trim()) return;
 
     try {
-      // Delete all todos in the section
-      await supabase.from("todos").delete().eq("section_id", sectionId);
-
-      // Delete the section
-      const { error } = await supabase
-        .from("sections")
-        .delete()
-        .eq("id", sectionId);
+      const { error } = await getSectionsTable()
+        .update({ title: newTitle.trim() })
+        .eq('id', sectionId);
 
       if (error) throw error;
 
-      setSections(sections.filter((section) => section.id !== sectionId));
+      setSections((prevSections) =>
+        prevSections.map((section) =>
+          section.id === sectionId
+            ? { ...section, title: newTitle.trim() }
+            : section
+        )
+      );
+    } catch (error) {
+      console.error("Error updating section:", error);
+    }
+  };
+
+  const addSection = async (title: string) => {
+    if (!title.trim()) return;
+
+    try {
+      const maxOrder = Math.max(0, ...sections.map((s) => s.order));
+      const newSection = {
+        title: title.trim(),
+        order: maxOrder + 1,
+      };
+
+      const { data: insertedSection, error } = await getSectionsTable()
+        .insert(newSection)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!insertedSection) throw new Error("No section returned from insert");
+
+      const newTodoSection: TodoSection = {
+        id: insertedSection.id,
+        title: insertedSection.title,
+        order: insertedSection.order,
+        todos: []
+      };
+
+      setSections((prevSections) => [...prevSections, newTodoSection]);
+    } catch (error) {
+      console.error("Error adding section:", error);
+    }
+  };
+
+  const deleteSection = async (sectionId: number) => {
+    try {
+      const { error } = await getSectionsTable()
+        .delete()
+        .eq('id', sectionId);
+
+      if (error) throw error;
+
+      setSections((prevSections) =>
+        prevSections.filter((section) => section.id !== sectionId)
+      );
     } catch (error) {
       console.error("Error deleting section:", error);
-      // You might want to show an error message to the user here
     }
   };
 
@@ -346,8 +385,7 @@ const TodoApp: React.FC = () => {
 
     // Wait for animation to complete before updating state
     const now = new Date().toISOString();
-    const { error } = await supabase
-      .from("todos")
+    const { error } = await getTodosTable()
       .update({ completed: true, completed_at: now })
       .eq("id", todoId)
       .select()
@@ -379,7 +417,7 @@ const TodoApp: React.FC = () => {
 
   const deleteTodo = async (sectionId: number, todoId: number) => {
     try {
-      const { error } = await supabase.from("todos").delete().eq("id", todoId);
+      const { error } = await getTodosTable().delete().eq("id", todoId);
 
       if (error) throw error;
 
@@ -407,35 +445,12 @@ const TodoApp: React.FC = () => {
     todos: section.todos.filter((todo) => showCompleted || !todo.completed),
   }));
 
-  const startEditingSection = (sectionId: number) => {
-    setEditingSectionId(sectionId);
-  };
-
-  const finishEditingSection = async (sectionId: number, newTitle: string) => {
-    const { error } = await supabase
-      .from("sections")
-      .update({ title: newTitle })
-      .eq("id", sectionId);
-
-    if (error) {
-      console.error("Error updating section title:", error);
-    } else {
-      setSections(
-        sections.map((section) =>
-          section.id === sectionId ? { ...section, title: newTitle } : section
-        )
-      );
-    }
-    setEditingSectionId(null);
-  };
-
   const finishEditingTodo = async (
     sectionId: number,
     todoId: number,
     newText: string
   ) => {
-    const { error } = await supabase
-      .from("todos")
+    const { error } = await getTodosTable()
       .update({ text: newText })
       .eq("id", todoId);
 
@@ -473,8 +488,7 @@ const TodoApp: React.FC = () => {
 
     const isoDate = parsedDate.toISOString();
     
-    const { error } = await supabase
-      .from("todos")
+    const { error } = await getTodosTable()
       .update({ created_at: isoDate })
       .eq("id", todoId);
 
@@ -488,7 +502,9 @@ const TodoApp: React.FC = () => {
             ? {
                 ...section,
                 todos: section.todos.map((todo) =>
-                  todo.id === todoId ? { ...todo, created_at: isoDate } : todo
+                  todo.id === todoId
+                    ? { ...todo, created_at: isoDate }
+                    : todo
                 ),
               }
             : section
@@ -534,16 +550,14 @@ const TodoApp: React.FC = () => {
 
     try {
       console.log("Starting sync...");
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from("sections")
+      const { data: sectionsData, error: sectionsError } = await getSectionsTable()
         .select("*")
         .order("order");
 
       if (sectionsError) throw sectionsError;
       console.log("Fetched sections:", sectionsData);
 
-      const { data: todosData, error: todosError } = await supabase
-        .from("todos")
+      const { data: todosData, error: todosError } = await getTodosTable()
         .select("*")
         .order("id");
 
@@ -602,9 +616,9 @@ const TodoApp: React.FC = () => {
       }
 
       // Update state
-      const combinedData = sectionsData.map((section) => ({
+      const combinedData = sectionsData.map((section: any) => ({
         ...section,
-        todos: todosData.filter((todo) => todo.section_id === section.id),
+        todos: todosData.filter((todo: any) => todo.section_id === section.id),
       }));
       console.log("Updating React state with:", combinedData);
       setSections(combinedData);
@@ -664,15 +678,20 @@ const TodoApp: React.FC = () => {
             type="text"
             value={newSectionTitle}
             onChange={(e) => setNewSectionTitle(e.target.value)}
-            onBlur={handleAddSection}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleAddSection();
+            onBlur={(e) => {
+              if (newSectionTitle.trim()) {
+                addSection(newSectionTitle);
+                setNewSectionTitle("");
+              }
+            }}
+            onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter" && newSectionTitle.trim()) {
+                addSection(newSectionTitle);
+                setNewSectionTitle("");
               }
             }}
             className="new-todo-input"
-            placeholder="Enter section title..."
-            autoFocus
+            placeholder="Add a new section..."
           />
         </div>
       );
@@ -695,38 +714,6 @@ const TodoApp: React.FC = () => {
         Add Section
       </button>
     );
-  };
-
-  const handleAddSection = async (): Promise<void> => {
-    try {
-      if (!newSectionTitle.trim()) {
-        return;
-      }
-      // Get the minimum order value and subtract 1 to place at top
-      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
-      const newOrder = minOrder - 1;
-
-      const result = await supabase
-        .from("sections")
-        .insert({ title: newSectionTitle || "New Section", order: newOrder })
-        .select()
-        .single();
-
-      if (result.error) {
-        console.error("Error adding section:", result.error);
-        return;
-      }
-
-      setSections((prevSections) =>
-        [...prevSections, { ...result.data, todos: [] }].sort(
-          (a, b) => (a.order || 0) - (b.order || 0)
-        )
-      );
-      setEditingSectionId(null);
-      setNewSectionTitle("");
-    } catch (error) {
-      console.error("Error adding section:", error);
-    }
   };
 
   const isRecentDate = (dateStr: string) => {
@@ -989,8 +976,7 @@ const TodoApp: React.FC = () => {
     try {
       await Promise.all(
         newSections.map((section, index) =>
-          supabase
-            .from("sections")
+          getSectionsTable()
             .update({ order: index })
             .eq("id", section.id)
         )
@@ -1155,7 +1141,7 @@ const TodoApp: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {filteredSections.map((section, index) => (
+            {filteredSections.map((section: TodoSection, index: number) => (
               <div key={section.id} className="todo-section">
                 {/* Section Header */}
                 <div className="flex items-center justify-between mb-4 group">
@@ -1224,7 +1210,7 @@ const TodoApp: React.FC = () => {
 
                 {/* Todos Container */}
                 <div className="space-y-2">
-                  {section.todos.map((todo, index) => (
+                  {section.todos.map((todo) => (
                     <div
                       key={todo.id}
                       className={`todo-item ${editingTodoId === todo.id ? 'editing' : ''}`}
@@ -1232,8 +1218,21 @@ const TodoApp: React.FC = () => {
                       {renderTodoItem(section, todo)}
                     </div>
                   ))}
-                  {renderAddTodoInput(section.id)}
-                  {!newTodoSectionId && renderAddTodoLink(section.id)}
+                  <input
+                    type="text"
+                    placeholder="Add a new todo..."
+                    onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") {
+                        const input = e.currentTarget;
+                        if (input.value.trim()) {
+                          addTodo(section.id, input.value);
+                          input.value = "";
+                        }
+                      }
+                    }}
+                    className="add-todo-input"
+                  />
+                  {renderAddTodoLink(section.id)}
                 </div>
               </div>
             ))}

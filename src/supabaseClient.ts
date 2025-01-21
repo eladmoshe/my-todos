@@ -9,6 +9,12 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
+// Use 'dev' schema in development, 'public' schema in production
+const schema = process.env.NODE_ENV === 'development' ? 'dev' : 'public'
+
+export const getTodosTable = () => supabase.from(`${schema}.todos`)
+export const getSectionsTable = () => supabase.from(`${schema}.sections`)
+
 export const signUp = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({ email, password })
   return { user: data.user, error }
