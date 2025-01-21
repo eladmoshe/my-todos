@@ -1225,7 +1225,10 @@ const TodoApp: React.FC = () => {
                 {/* Todos Container */}
                 <div className="space-y-2">
                   {section.todos.map((todo, index) => (
-                    <div key={todo.id} className="todo-item">
+                    <div
+                      key={todo.id}
+                      className={`todo-item ${editingTodoId === todo.id ? 'editing' : ''}`}
+                    >
                       {renderTodoItem(section, todo)}
                     </div>
                   ))}
