@@ -1,117 +1,52 @@
-# TypeScript React Todo App
+# My Todos - Your Smart Digital Notebook
 
-A modern, feature-rich Todo application built with React and TypeScript, using Supabase as a backend. The app includes offline support, drag-and-drop functionality, and a responsive notebook-like interface.
+Stay organized and productive with this modern todo app that works like your favorite notebook, but smarter. Whether you're online or offline, keep track of your tasks with ease and style.
 
-## Features
+## What Makes This Todo App Special?
 
-- User authentication (sign up, sign in, sign out)
-- Create, read, update, and delete todo items
-- Organize todos into sections with drag-and-drop reordering
-- Offline support with automatic sync when back online
-- URL preview for links in todo items
-- Age indicators for todos
-- Development environment indicator
-- Responsive design with a notebook-like interface
-- Progressive Web App (PWA) support
+- **Works Offline**: Keep working even without internet - your changes sync automatically when you're back online
+- **Smart Organization**: Group related tasks together and easily rearrange them with simple drag and drop
+- **Rich Task Details**: Add links to your tasks and see beautiful previews of the linked content
+- **Task Aging**: Visual indicators show how long tasks have been pending, helping you stay on top of your priorities
+- **Notebook-style Interface**: A clean, familiar design that feels just like writing in your paper notebook
+- **Mobile-Friendly**: Access your todos from any device - phone, tablet, or computer
+- **Instant Updates**: Changes sync instantly across all your devices
+- **Works Like an App**: Install it on your device for quick access, just like a native app
 
-## Technologies Used
+## Getting Started
 
-- React 18
-- TypeScript 4.9
-- Supabase for backend and authentication
-- Express.js for API server
-- IndexedDB for offline storage
-- Tailwind CSS for styling
-- Workbox for service worker and PWA features
-- Jest and React Testing Library for testing
+1. Visit the app at [your-app-url]
+2. Sign up with your email or continue with Google
+3. Start creating your first todo list!
 
-## Prerequisites
+## Quick Guide
 
-- Node.js (version 20.0.0 or later)
-- npm
-- Supabase account and project
+1. **Creating Tasks**:
+   - Click the "+" button to add a new task
+   - Press Enter to quickly add multiple tasks
+   - Add links to tasks for easy reference
+
+2. **Organizing**:
+   - Create sections to group related tasks
+   - Drag and drop tasks to rearrange them
+   - Mark tasks as complete with a single click
+
+3. **Offline Use**:
+   - The app works without internet
+   - Your changes save automatically
+   - Everything syncs when you're back online
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/typescript-react-todo.git
-   ```
+Want quick access? Install the app on your device:
 
-2. Navigate to the project directory:
-   ```bash
-   cd typescript-react-todo
-   ```
+1. Open the app in your browser
+2. Look for the "Install" or "Add to Home Screen" option
+3. Follow the prompts to install
 
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+## Technical Details
 
-4. Create a `.env` file in the root directory and add your Supabase credentials:
-   ```
-   REACT_APP_SUPABASE_URL=your_supabase_project_url
-   REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-5. Start the development server:
-   ```bash
-   npm start
-   ```
-
-6. Open [http://localhost:3000](http://localhost:3000) to view the app in your browser.
-
-## Available Scripts
-
-- `npm start`: Runs both the React app and Express server concurrently
-- `npm run build`: Builds the app for production
-- `npm test`: Runs tests in CI mode
-- `npm run test:watch`: Runs tests in watch mode
-- `npm run lint`: Lints the source code
-- `npm run eject`: Ejects from Create React App
-
-## Project Structure
-
-```
-src/
-├── frontend/           # React frontend code
-│   ├── components/     # React components
-│   └── utils/         # Frontend utilities
-├── server/            # Express backend code
-├── utils/             # Shared utilities
-└── types/             # TypeScript type definitions
-```
-
-## Development
-
-The project uses different schemas for development and production:
-- Development: `dev` schema
-- Production: `public` schema
-
-A development banner appears at the top of the app when running in development mode.
-
-## Testing
-
-The project includes comprehensive tests using Jest and React Testing Library. Run the tests using:
-
-```bash
-npm test
-```
-
-## Continuous Integration
-
-GitHub Actions workflows are configured for:
-- Running tests
-- Linting code
-- Building the application
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+For developers interested in the technical implementation or setting up a local development environment, please check our [Developer Guide](link-to-dev-guide.md).
 
 ## License
 
