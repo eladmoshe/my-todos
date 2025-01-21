@@ -41,17 +41,10 @@ jobs:
           PROJECT_ID: tkcfadcfwizapyymwdnu
         run: |
           supabase login --token $SUPABASE_ACCESS_TOKEN
-          echo "Creating storage bucket..."
-          supabase storage list-buckets || true
-          supabase storage delete-bucket www || true
-          supabase storage create-bucket www
-          echo "Making bucket public..."
-          supabase storage update-bucket www --public=true
-          echo "Verifying bucket creation..."
-          supabase storage list-buckets
           echo "Uploading files..."
           cd build
           for file in $(find . -type f); do
-            echo "Uploading $file..."
-            supabase storage upload --bucket www --path "${file#./}" --file "$file"
+            relative_path="${file#./}"
+            echo "Uploading $relative_path..."
+            supabase storage cp "$file" "www/$relative_path"
           done
