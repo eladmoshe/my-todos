@@ -32,7 +32,11 @@ jobs:
         run: npm test
 
       - name: Build
-        run: npm run build
+        run: |
+          echo "Building React app..."
+          npm run build
+          echo "Build complete. Contents of build directory:"
+          ls -la build/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
@@ -41,3 +45,4 @@ jobs:
           publish_dir: ./build
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
+          force_orphan: true
