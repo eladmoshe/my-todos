@@ -15,7 +15,7 @@ import {
   Draggable,
   DropResult,
 } from "react-beautiful-dnd";
-import { format, parseISO, differenceInWeeks } from "date-fns"; // Make sure to install this package: npm install date-fns
+import { format, parseISO } from "date-fns"; // Make sure to install this package: npm install date-fns
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
@@ -622,77 +622,115 @@ const TodoApp: React.FC = () => {
     }
   };
 
-  const addEmptyTodo = (sectionId: number) => {
-    setNewTodoSectionId(sectionId);
-    setNewTodoText("");
-    setTimeout(() => {
-      if (newTodoInputRef.current) {
-        newTodoInputRef.current.focus();
-      }
-    }, 0);
-  };
-
-  const handleNewTodoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewTodoText(e.target.value);
-  };
-
-  const handleTodoKeyPress = async (
-    e: React.KeyboardEvent,
-    sectionId: number,
-    todoId: number,
-    newText: string
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      await finishEditingTodo(sectionId, todoId, newText);
-    }
-  };
-
-  const handleTodoChange = (
-    sectionId: number,
-    todoId: number,
-    newText: string
-  ) => {
-    setSections(
-      sections.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              todos: section.todos.map((todo) =>
-                todo.id === todoId ? { ...todo, text: newText } : todo
-              ),
-            }
-          : section
-      )
+  const renderAddTodoInput = (sectionId: number) => {
+    if (newTodoSectionId !== sectionId) return null;
+    return (
+      <input
+        ref={newTodoInputRef}
+        type="text"
+        value={newTodoText}
+        onChange={(e) => setNewTodoText(e.target.value)}
+        onBlur={() => handleNewTodoBlur(sectionId)}
+        onKeyPress={(e) => handleNewTodoKeyPress(e, sectionId)}
+        className="new-todo-input"
+        placeholder="What needs to be done?"
+        autoFocus
+      />
     );
-    if (editInputRef.current) {
-      editInputRef.current.style.height = "32px"; // Set to one line height
-      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
-    }
   };
 
-  const handleTodoClick = (e: React.MouseEvent, todoId: number) => {
-    if (!(e.target as HTMLElement).closest("a")) {
-      setEditingTodoId(todoId);
-    }
+  const renderAddTodoLink = (sectionId: number) => {
+    if (newTodoSectionId === sectionId) return null;
+    return (
+      <button
+        className="add-item-link"
+        onClick={() => setNewTodoSectionId(sectionId)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Add Item
+      </button>
+    );
   };
 
-  const handleTodoBlur = (
-    sectionId: number,
-    todoId: number,
-    newText: string
-  ) => {
-    finishEditingTodo(sectionId, todoId, newText);
-    setEditingTodoId(null);
+  const renderAddSection = () => {
+    if (editingSectionId === -1) {
+      return (
+        <div className="add-section">
+          <input
+            type="text"
+            value={newSectionTitle}
+            onChange={(e) => setNewSectionTitle(e.target.value)}
+            onBlur={handleAddSection}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                handleAddSection();
+              }
+            }}
+            className="new-todo-input"
+            placeholder="Enter section title..."
+            autoFocus
+          />
+        </div>
+      );
+    }
+
+    return (
+      <button className="add-button" onClick={() => setEditingSectionId(-1)}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+            clipRule="evenodd"
+          />
+        </svg>
+        Add Section
+      </button>
+    );
   };
 
-  useEffect(() => {
-    if (editingTodoId !== null && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.style.height = "32px"; // Set to one line height
-      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
+  const handleAddSection = async () => {
+    try {
+      // Get the minimum order value and subtract 1 to place at top
+      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
+      const newOrder = minOrder - 1;
+
+      const result = await supabase
+        .from("sections")
+        .insert({ title: newSectionTitle || "New Section", order: newOrder })
+        .select()
+        .single();
+
+      if (result.error) {
+        console.error("Error adding section:", result.error);
+        return;
+      }
+
+      setSections((prevSections) =>
+        [...prevSections, { ...result.data, todos: [] }].sort(
+          (a, b) => (a.order || 0) - (b.order || 0)
+        )
+      );
+      setEditingSectionId(null);
+      setNewSectionTitle("");
+    } catch (error) {
+      console.error("Error adding section:", error);
     }
-  }, [editingTodoId]);
+  };
 
   const formatCreatedAt = (timestamp: string) => {
     return format(parseISO(timestamp), "MMM d, yyyy 'at' h:mm a");
@@ -825,141 +863,67 @@ const TodoApp: React.FC = () => {
     );
   };
 
-  const renderAddTodoInput = (sectionId: number) => {
-    if (newTodoSectionId !== sectionId) return null;
-    return (
-      <input
-        ref={newTodoInputRef}
-        type="text"
-        value={newTodoText}
-        onChange={(e) => setNewTodoText(e.target.value)}
-        onBlur={() => handleNewTodoBlur(sectionId)}
-        onKeyPress={(e) => handleNewTodoKeyPress(e, sectionId)}
-        className="new-todo-input"
-        placeholder="What needs to be done?"
-        autoFocus
-      />
-    );
-  };
-
-  const renderAddTodoLink = (sectionId: number) => {
-    if (newTodoSectionId === sectionId) return null;
-    return (
-      <button
-        className="add-item-link"
-        onClick={() => setNewTodoSectionId(sectionId)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Add Item
-      </button>
-    );
-  };
-
-  const renderAddSection = () => {
-    if (editingSectionId === -1) {
-      return (
-        <div className="add-section">
-          <input
-            type="text"
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            onBlur={handleAddSection}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleAddSection();
-              }
-            }}
-            className="new-todo-input"
-            placeholder="Enter section title..."
-            autoFocus
-          />
-        </div>
-      );
-    }
-
-    return (
-      <button className="add-button" onClick={() => setEditingSectionId(-1)}>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Add Section
-      </button>
-    );
-  };
-
-  const handleAddSection = async () => {
-    try {
-      // Get the minimum order value and subtract 1 to place at top
-      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
-      const newOrder = minOrder - 1;
-
-      const result = await supabase
-        .from("sections")
-        .insert({ title: newSectionTitle || "New Section", order: newOrder })
-        .select()
-        .single();
-
-      if (result.error) {
-        console.error("Error adding section:", result.error);
-        return;
-      }
-
-      setSections((prevSections) =>
-        [...prevSections, { ...result.data, todos: [] }].sort(
-          (a, b) => (a.order || 0) - (b.order || 0)
-        )
-      );
-      setEditingSectionId(null);
-      setNewSectionTitle("");
-    } catch (error) {
-      console.error("Error adding section:", error);
+  const handleTodoClick = (e: React.MouseEvent, todoId: number) => {
+    if (!(e.target as HTMLElement).closest("a")) {
+      setEditingTodoId(todoId);
     }
   };
 
-  const addSection = async () => {
+  const handleTodoKeyPress = async (
+    e: React.KeyboardEvent,
+    sectionId: number,
+    todoId: number,
+    newText: string
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await finishEditingTodo(sectionId, todoId, newText);
+    }
+  };
+
+  useEffect(() => {
+    if (editingTodoId !== null && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.style.height = "32px"; // Set to one line height
+      editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
+    }
+  }, [editingTodoId]);
+
+  const reorderSection = async (
+    sectionId: number,
+    direction: "up" | "down"
+  ) => {
+    const currentIndex = sections.findIndex(
+      (section) => section.id === sectionId
+    );
+    if (
+      (direction === "up" && currentIndex === 0) ||
+      (direction === "down" && currentIndex === sections.length - 1)
+    ) {
+      return; // Can't move further in this direction
+    }
+
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const newSections = [...sections];
+    const [movedSection] = newSections.splice(currentIndex, 1);
+    newSections.splice(newIndex, 0, movedSection);
+
+    setSections(newSections);
+
+    // Update the order in the database
     try {
-      // Get the minimum order value and subtract 1 to place at top
-      const minOrder = Math.min(...sections.map((s) => s.order || 0), 0);
-      const newOrder = minOrder - 1;
-
-      const result = await supabase
-        .from("sections")
-        .insert({ title: "New Section", order: newOrder })
-        .select()
-        .single();
-
-      if (result.error) {
-        console.error("Error adding section:", result.error);
-        return;
-      }
-
-      // Add the new section and sort by order
-      setSections((prevSections) =>
-        [...prevSections, { ...result.data, todos: [] }].sort(
-          (a, b) => (a.order || 0) - (b.order || 0)
+      await Promise.all(
+        newSections.map((section, index) =>
+          supabase
+            .from("sections")
+            .update({ order: index })
+            .eq("id", section.id)
         )
       );
     } catch (error) {
-      console.error("Error adding section:", error);
+      console.error("Error updating section order:", error);
+      // Optionally, revert the state if the database update fails
+      setSections(sections);
     }
   };
 
@@ -1033,44 +997,6 @@ const TodoApp: React.FC = () => {
       />
     </div>
   );
-
-  const reorderSection = async (
-    sectionId: number,
-    direction: "up" | "down"
-  ) => {
-    const currentIndex = sections.findIndex(
-      (section) => section.id === sectionId
-    );
-    if (
-      (direction === "up" && currentIndex === 0) ||
-      (direction === "down" && currentIndex === sections.length - 1)
-    ) {
-      return; // Can't move further in this direction
-    }
-
-    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    const newSections = [...sections];
-    const [movedSection] = newSections.splice(currentIndex, 1);
-    newSections.splice(newIndex, 0, movedSection);
-
-    setSections(newSections);
-
-    // Update the order in the database
-    try {
-      await Promise.all(
-        newSections.map((section, index) =>
-          supabase
-            .from("sections")
-            .update({ order: index })
-            .eq("id", section.id)
-        )
-      );
-    } catch (error) {
-      console.error("Error updating section order:", error);
-      // Optionally, revert the state if the database update fails
-      setSections(sections);
-    }
-  };
 
   return (
     <div data-testid="todo-app" className="min-h-screen py-12 px-6">
