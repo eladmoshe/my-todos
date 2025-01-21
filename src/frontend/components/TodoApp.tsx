@@ -836,8 +836,12 @@ const TodoApp: React.FC = () => {
   useEffect(() => {
     if (editingTodoId !== null && editInputRef.current) {
       editInputRef.current.focus();
-      editInputRef.current.style.height = "32px"; // Set to one line height
+      // Set initial height to match content
+      editInputRef.current.style.height = 'auto';
       editInputRef.current.style.height = `${editInputRef.current.scrollHeight}px`;
+      // Position cursor at end of text
+      const length = editInputRef.current.value.length;
+      editInputRef.current.setSelectionRange(length, length);
     }
   }, [editingTodoId]);
 
