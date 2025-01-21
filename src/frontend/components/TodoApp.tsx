@@ -988,6 +988,16 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const DevBanner: React.FC = () => {
+    if (process.env.NODE_ENV !== 'development') return null;
+    
+    return (
+      <div className="bg-yellow-400 text-black text-sm py-1 px-2 text-center font-medium">
+        Development Environment
+      </div>
+    );
+  };
+
   if (!user) {
     return (
       <div data-testid="todo-app" className="min-h-screen py-12 px-6">
@@ -1063,7 +1073,8 @@ const TodoApp: React.FC = () => {
   );
 
   return (
-    <div data-testid="todo-app" className="min-h-screen py-12 px-6">
+    <div data-testid="todo-app" className="min-h-screen bg-gray-100">
+      <DevBanner />
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
         {/* Main content container */}
         <div className="py-8 px-4 relative">
