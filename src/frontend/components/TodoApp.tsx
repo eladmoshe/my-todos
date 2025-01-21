@@ -118,7 +118,11 @@ const LoadingSkeleton: React.FC = () => {
   );
 };
 
-const TodoApp: React.FC = () => {
+interface TodoAppProps {
+  basename?: string;
+}
+
+const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   console.log("Rendering TodoApp component");
   const [sections, setSections] = useState<TodoSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);

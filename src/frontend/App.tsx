@@ -1,10 +1,14 @@
 import React from "react";
 import TodoApp from "./components/TodoApp";
 
-const App: React.FC = () => {
+interface AppProps {
+  basename?: string;
+}
+
+const App: React.FC<AppProps> = ({ basename }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <TodoApp />
+      <TodoApp basename={basename} />
     </div>
   );
 };
