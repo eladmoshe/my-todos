@@ -174,10 +174,15 @@
   line-height: 1.4;
   font-family: inherit;
   min-height: 1.4rem;
+  padding: 0;
+  margin: 0;
+  display: block;
 }
 
 .todo-item-content {
   display: block;
+  padding: 0;
+  margin: 0;
 }
 
 .todo-link {
@@ -199,7 +204,10 @@ textarea.todo-input {
   resize: none;
   outline: none;
   min-height: 1.4rem;
-  overflow-y: hidden;
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
 }
 
 /* Completed todo styling */
