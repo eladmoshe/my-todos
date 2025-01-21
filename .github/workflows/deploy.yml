@@ -28,6 +28,8 @@ jobs:
         run: npm test
 
       - name: Build
+        env:
+          PUBLIC_URL: ${{ secrets.SUPABASE_URL }}/storage/v1/object/public/www
         run: npm run build
 
       - name: Deploy to Supabase
