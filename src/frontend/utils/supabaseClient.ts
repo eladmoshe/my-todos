@@ -21,6 +21,7 @@ export interface BaseSection {
   id: number
   title: string
   order: number
+  user_id: string
 }
 
 export interface BaseTodo {
@@ -30,6 +31,7 @@ export interface BaseTodo {
   completed_at: string | null
   created_at: string
   section_id: number
+  user_id: string
 }
 
 // Verify that our database types match our base types
@@ -41,9 +43,16 @@ export interface TodoSection extends BaseSection {
   todos: BaseTodo[]
 }
 
-// Type-safe table getters
-export const getTodosTable = () => supabase.from('todos')
-export const getSectionsTable = () => supabase.from('sections')
+// Type-safe table getters with user filtering
+export const getTodosTable = (userId?: string) => {
+  const table = supabase.from('todos');
+  return userId ? table.select('*').eq('user_id', userId) : table;
+}
+
+export const getSectionsTable = (userId?: string) => {
+  const table = supabase.from('sections');
+  return userId ? table.select('*').eq('user_id', userId) : table;
+}
 
 export const signUp = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({ email, password })

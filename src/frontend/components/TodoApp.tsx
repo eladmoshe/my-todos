@@ -148,7 +148,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const fetchSections = useCallback(async () => {
     if (!user) return;
 
-    const { data: rawSections, error: sectionsError } = await getSectionsTable()
+    const { data: rawSections, error: sectionsError } = await getSectionsTable(user.id)
       .select("*")
       .order('order', { ascending: true });
 
@@ -157,7 +157,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       return;
     }
 
-    const { data: rawTodos, error: todosError } = await getTodosTable()
+    const { data: rawTodos, error: todosError } = await getTodosTable(user.id)
       .select("*")
       .order('id', { ascending: true });
 
@@ -174,6 +174,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       id: section.id,
       title: section.title,
       order: section.order,
+      user_id: section.user_id,
       todos: todos.filter(todo => todo.section_id === section.id)
     }));
 
@@ -253,9 +254,17 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   }, [user, fetchSections]);
 
   const addTodo = async (sectionId: number, todoText: string) => {
+    if (!user) return false;
+    
     try {
       const { data: newTodo, error } = await getTodosTable()
-        .insert({ text: todoText, section_id: sectionId })
+        .insert({ 
+          text: todoText, 
+          section_id: sectionId,
+          user_id: user.id,
+          completed: false,
+          created_at: new Date().toISOString()
+        })
         .select()
         .single();
 
@@ -337,13 +346,14 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   };
 
   const addSection = async (title: string) => {
-    if (!title.trim()) return;
+    if (!title.trim() || !user) return;
 
     try {
       const maxOrder = Math.max(0, ...sections.map((s) => s.order));
       const newSection = {
         title: title.trim(),
         order: maxOrder + 1,
+        user_id: user.id
       };
 
       const { data: insertedSection, error } = await getSectionsTable()
@@ -358,6 +368,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
         id: insertedSection.id,
         title: insertedSection.title,
         order: insertedSection.order,
+        user_id: insertedSection.user_id,
         todos: []
       };
 
@@ -554,14 +565,14 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     try {
       console.log("Starting sync...");
-      const { data: sectionsData, error: sectionsError } = await getSectionsTable()
+      const { data: sectionsData, error: sectionsError } = await getSectionsTable(user.id)
         .select("*")
         .order("order");
 
       if (sectionsError) throw sectionsError;
       console.log("Fetched sections:", sectionsData);
 
-      const { data: todosData, error: todosError } = await getTodosTable()
+      const { data: todosData, error: todosError } = await getTodosTable(user.id)
         .select("*")
         .order("id");
 

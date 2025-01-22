@@ -9,6 +9,7 @@ export interface Database {
           completed_at: string | null
           created_at: string
           section_id: number
+          user_id: string
         }
         Insert: {
           id?: number
@@ -17,6 +18,7 @@ export interface Database {
           completed_at?: string | null
           created_at?: string
           section_id: number
+          user_id: string
         }
         Update: {
           id?: number
@@ -25,6 +27,7 @@ export interface Database {
           completed_at?: string | null
           created_at?: string
           section_id?: number
+          user_id?: string
         }
       }
       sections: {
@@ -32,16 +35,19 @@ export interface Database {
           id: number
           title: string
           order: number
+          user_id: string
         }
         Insert: {
           id?: number
           title: string
           order?: number
+          user_id: string
         }
         Update: {
           id?: number
           title?: string
           order?: number
+          user_id?: string
         }
       }
     }
@@ -56,6 +62,7 @@ export interface Database {
           completed_at: string | null
           created_at: string
           section_id: number
+          user_id: string
         }
         Insert: {
           id?: number
@@ -64,6 +71,7 @@ export interface Database {
           completed_at?: string | null
           created_at?: string
           section_id: number
+          user_id: string
         }
         Update: {
           id?: number
@@ -72,6 +80,7 @@ export interface Database {
           completed_at?: string | null
           created_at?: string
           section_id?: number
+          user_id?: string
         }
       }
       sections: {
@@ -79,16 +88,19 @@ export interface Database {
           id: number
           title: string
           order: number
+          user_id: string
         }
         Insert: {
           id?: number
           title: string
           order?: number
+          user_id: string
         }
         Update: {
           id?: number
           title?: string
           order?: number
+          user_id?: string
         }
       }
     }
