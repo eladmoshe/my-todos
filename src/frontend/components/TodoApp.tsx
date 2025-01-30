@@ -1022,6 +1022,14 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div data-testid="todo-app" className="min-h-screen py-12 px-6">
@@ -1068,10 +1076,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
         </div>
       </div>
     );
-  }
-
-  if (isLoading) {
-    return <LoadingSkeleton />;
   }
 
   // Add this custom Toggle component
