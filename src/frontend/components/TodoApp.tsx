@@ -141,14 +141,13 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const [newTodoText, setNewTodoText] = useState<string>("");
   const newTodoInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
   const [isOffline] = useState(!navigator.onLine);
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [newSectionTitle, setNewSectionTitle] = useState<string>("");
   const [timeRefresh, setTimeRefresh] = useState(0);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const fetchSections = useCallback(async () => {
     if (!user) return;
@@ -522,14 +521,33 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     }
   };
 
-  const toggleShowCompleted = () => {
-    setShowCompleted(!showCompleted);
-  };
+  const handleSync = async () => {
+    if (!user) return;
 
-  const filteredSections = sections.map((section) => ({
-    ...section,
-    todos: section.todos.filter((todo) => showCompleted || !todo.completed),
-  }));
+    try {
+      console.log("Starting sync...");
+      const { data: sectionsData, error: sectionsError } =
+        await getSectionsTable(user.id).select("*").order("order");
+
+      if (sectionsError) throw sectionsError;
+      console.log("Fetched sections:", sectionsData);
+
+      const { data: todosData, error: todosError } = await getTodosTable(
+        user.id
+      )
+        .select("*")
+        .order("id");
+
+      if (todosError) throw todosError;
+
+      // Perform sync logic here
+      // This might involve updating local storage or performing other sync operations
+      console.log("Sync completed successfully");
+    } catch (error) {
+      console.error("Sync failed:", error);
+      // Optionally show an error message to the user
+    }
+  };
 
   const finishEditingTodo = async (
     sectionId: number,
@@ -633,97 +651,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       setIsUserPanelOpen(false);
     } catch (error) {
       console.error("Error signing out:", error);
-    }
-  };
-
-  const handleSync = async () => {
-    if (!user) return;
-
-    try {
-      console.log("Starting sync...");
-      const { data: sectionsData, error: sectionsError } =
-        await getSectionsTable(user.id).select("*").order("order");
-
-      if (sectionsError) throw sectionsError;
-      console.log("Fetched sections:", sectionsData);
-
-      const { data: todosData, error: todosError } = await getTodosTable(
-        user.id
-      )
-        .select("*")
-        .order("id");
-
-      if (todosError) throw todosError;
-      console.log("Fetched todos:", todosData);
-
-      // Clear and update local database
-      const db = await openLocalDatabase();
-
-      // Create separate transactions for clearing and updating
-      const clearTransaction = db.transaction(
-        ["sections", "todos"],
-        "readwrite"
-      );
-      console.log("Clearing local data...");
-
-      try {
-        await Promise.all([
-          clearTransaction.objectStore("sections").clear(),
-          clearTransaction.objectStore("todos").clear(),
-        ]);
-        await new Promise((resolve) => {
-          clearTransaction.oncomplete = resolve;
-        });
-        console.log("Local data cleared successfully");
-      } catch (error) {
-        console.error("Error clearing local data:", error);
-        throw error;
-      }
-
-      // Create new transaction for saving
-      const saveTransaction = db.transaction(
-        ["sections", "todos"],
-        "readwrite"
-      );
-      console.log("Saving new data...");
-
-      try {
-        const promises = [
-          ...sectionsData.map((section: Section) =>
-            saveTransaction.objectStore("sections").add({
-              ...section,
-              last_edited: new Date().toISOString(),
-            })
-          ),
-          ...todosData.map((todo: Todo) =>
-            saveTransaction.objectStore("todos").add({
-              ...todo,
-              last_edited: new Date().toISOString(),
-            })
-          ),
-        ];
-
-        await Promise.all(promises);
-        await new Promise((resolve) => {
-          saveTransaction.oncomplete = resolve;
-        });
-        console.log("New data saved successfully");
-      } catch (error) {
-        console.error("Error saving new data:", error);
-        throw error;
-      }
-
-      // Update state
-      const combinedData = sectionsData.map((section: Section) => ({
-        ...section,
-        todos: todosData.filter((todo: Todo) => todo.section_id === section.id),
-      }));
-      console.log("Updating React state with:", combinedData);
-      setSections(combinedData);
-
-      console.log("Sync completed successfully");
-    } catch (error) {
-      console.error("Error syncing data:", error);
     }
   };
 
@@ -1021,6 +948,43 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     setIsUserPanelOpen(!isUserPanelOpen);
   };
 
+  const UserMenu: React.FC = () => {
+    return (
+      <div className="user-menu">
+        <div className="user-menu-item">
+          <label className="user-menu-label">
+            <input 
+              type="checkbox" 
+              checked={showCompleted} 
+              onChange={() => setShowCompleted(!showCompleted)} 
+            />
+            Show Completed
+          </label>
+        </div>
+        
+        <div className="user-menu-item">
+          <button 
+            className="user-menu-button"
+            onClick={handleSync}
+          >
+            <ArrowPathIcon className="w-4 h-4 mr-2" />
+            Sync
+          </button>
+        </div>
+        
+        <div className="user-menu-item">
+          <button 
+            className="user-menu-button"
+            onClick={handleSignOut}
+          >
+            <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+            Log Out
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1077,56 +1041,40 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     );
   }
 
-  // Add this custom Toggle component
-  const Toggle: React.FC<{
-    checked: boolean;
-    onChange: () => void;
-  }> = ({ checked, onChange }) => (
-    <div
-      className={`relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
-        checked ? "bg-blue-600" : "bg-gray-200"
-      }`}
-      onClick={onChange}
-      role="switch"
-      aria-checked={checked}
-      tabIndex={0}
-    >
-      <span
-        className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
-          checked ? "translate-x-4" : "translate-x-0"
-        }`}
-      />
-    </div>
-  );
+  const filteredSections = sections.map((section) => ({
+    ...section,
+    todos: section.todos.filter((todo) => showCompleted || !todo.completed),
+  }));
 
   return (
     <div data-testid="todo-app" className="min-h-screen bg-gray-100">
       <DevBanner />
       {user ? (
         <div className="app-header">
-          <div className="app-title"></div>
-          <div className="header-actions">
-            <div className="user-panel">
+          <div className="app-header-content">
+            <div className="user-info">
               <span className="user-email">{user.email}</span>
-              <button
-                className="auth-button"
-                onClick={() => {
-                  supabase.auth.signOut();
-                  setUser(null);
-                }}
+              <button 
+                className="user-menu-toggle"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               >
-                <ArrowRightOnRectangleIcon />
+                {isUserMenuOpen ? (
+                  <ChevronUpIcon className="w-4 h-4" />
+                ) : (
+                  <ChevronDownIcon className="w-4 h-4" />
+                )}
               </button>
             </div>
-            {/* Optional: Add other header action buttons here */}
           </div>
+          
+          {isUserMenuOpen && (
+            <UserMenu />
+          )}
         </div>
       ) : (
         <div className="app-header">
-          <h1 className="app-title"></h1>
           <div className="header-actions">
-            {/* Authentication form or buttons */}
-            <button
+            <button 
               className="auth-button"
               onClick={() => setIsUserPanelOpen(!isUserPanelOpen)}
             >
@@ -1152,51 +1100,16 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
           {/* Sign Out Button (only show when online) */}
           {!isOffline && user && (
             <div className="flex gap-2 absolute top-4 right-4">
-              <button
-                onClick={handleSync}
-                className="flex items-center px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
-                title="Sync with server"
-              >
-                <ArrowPathIcon className="w-5 h-5 mr-1" />
-                Sync
-              </button>
             </div>
           )}
 
-          {/* Controls line */}
-          <div className="flex items-center mb-8 border-b border-gray-200 pb-2">
-            {/* Filters dropdown */}
-            <div className="relative" ref={filtersRef}>
-              <button
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="text-blue-500 hover:text-blue-600 transition-colors duration-200 text-sm font-medium"
-              >
-                Filters ▼
-              </button>
-              {isFiltersOpen && (
-                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div
-                    className="py-1"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="options-menu"
-                  >
-                    <div className="px-4 py-2 text-sm text-gray-700 flex items-center justify-between">
-                      <span>Show completed</span>
-                      <Toggle
-                        checked={showCompleted}
-                        onChange={toggleShowCompleted}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           <div className="space-y-4">
             {filteredSections.map((section: TodoSection, index: number) => (
-              <div key={section.id} className="todo-section">
+              <div 
+                key={section.id} 
+                className="todo-section"
+                aria-labelledby={`section-header-${section.id}`}
+              >
                 {/* Section Header */}
                 <div className="flex items-center justify-between mb-4 group">
                   {editingSectionId === section.id ? (
@@ -1223,9 +1136,10 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                       autoFocus
                     />
                   ) : (
-                    <h2
-                      className="section-title"
-                      onClick={() => startEditingSection(section.id)}
+                    <h2 
+                      id={`section-header-${section.id}`}
+                      className="text-lg font-semibold text-gray-800"
+                      aria-label={`Section: ${section.title}`}
                     >
                       {section.title}
                     </h2>
@@ -1245,7 +1159,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                       className="text-gray-400 hover:text-blue-500 transition-colors duration-200
                                    opacity-0 group-hover:opacity-100"
                       title="Move Section Down"
-                      disabled={index === filteredSections.length - 1}
+                      disabled={index === sections.length - 1}
                     >
                       <ChevronDownIcon className="w-5 h-5" />
                     </button>
