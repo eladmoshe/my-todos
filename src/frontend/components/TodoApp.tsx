@@ -287,34 +287,54 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     }
   };
 
-  const handleNewTodoBlur = async (sectionId: number) => {
-    const text = newTodoText.trim();
-    if (text) {
-      const success = await addTodo(sectionId, text);
-      if (success) {
-        setNewTodoText("");
-        setNewTodoSectionId(null);
-      }
-    } else {
-      setNewTodoSectionId(null);
-    }
-  };
+  const TodoInput: React.FC<{ sectionId: number }> = ({ sectionId }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleNewTodoKeyPress = async (
-    e: React.KeyboardEvent,
-    sectionId: number
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const text = newTodoText.trim();
-      if (text) {
-        const success = await addTodo(sectionId, text);
-        if (success) {
-          setNewTodoText("");
-          setNewTodoSectionId(null);
-        }
+    useEffect(() => {
+      if (isEditing && inputRef.current) {
+        inputRef.current.focus();
       }
-    }
+    }, [isEditing]);
+
+    const handleBlur = () => {
+      if (!inputRef.current?.value.trim()) {
+        setIsEditing(false);
+      }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && inputRef.current?.value.trim()) {
+        void addTodo(sectionId, inputRef.current.value.trim());
+        setIsEditing(false);
+      }
+    };
+
+    const handleAddTodo = () => {
+      setIsEditing(true);
+    };
+
+    return (
+      <div className="todo-input-container">
+        {!isEditing ? (
+          <div 
+            className="todo-placeholder" 
+            onClick={handleAddTodo}
+          >
+            Add a new todo...
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            className="new-todo-input"
+            placeholder="What needs to be done?"
+            onBlur={handleBlur}
+            onKeyPress={handleKeyPress}
+          />
+        )}
+      </div>
+    );
   };
 
   const startEditingSection = (sectionId: number) => {
@@ -649,93 +669,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     } catch (error) {
       console.error("Error syncing data:", error);
     }
-  };
-
-  const renderAddTodoInput = (sectionId: number) => {
-    if (newTodoSectionId !== sectionId) return null;
-    return (
-      <input
-        ref={newTodoInputRef}
-        type="text"
-        value={newTodoText}
-        onChange={(e) => setNewTodoText(e.target.value)}
-        onBlur={() => handleNewTodoBlur(sectionId)}
-        onKeyPress={(e) => handleNewTodoKeyPress(e, sectionId)}
-        className="new-todo-input"
-        placeholder="What needs to be done?"
-        autoFocus
-      />
-    );
-  };
-
-  const renderAddTodoLink = (sectionId: number): JSX.Element | null => {
-    if (newTodoSectionId === sectionId) return null;
-    return (
-      <button
-        className="add-item-link"
-        onClick={() => setNewTodoSectionId(sectionId)}
-        aria-label="Add new todo item"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Add Item
-      </button>
-    );
-  };
-
-  const renderAddSection = () => {
-    if (editingSectionId === -1) {
-      return (
-        <div className="add-section">
-          <input
-            type="text"
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            onBlur={(e) => {
-              if (newSectionTitle.trim()) {
-                addSection(newSectionTitle);
-                setNewSectionTitle("");
-              }
-            }}
-            onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === "Enter" && newSectionTitle.trim()) {
-                addSection(newSectionTitle);
-                setNewSectionTitle("");
-              }
-            }}
-            className="new-todo-input"
-            placeholder="Add a new section..."
-          />
-        </div>
-      );
-    }
-
-    return (
-      <button className="add-button" onClick={() => setEditingSectionId(-1)}>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Add Section
-      </button>
-    );
   };
 
   const isRecentDate = (dateStr: string) => {
@@ -1197,7 +1130,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
           {/* Add Section Button */}
           <div className="notebook-line flex items-center mb-4">
-            {renderAddSection()}
+            {/* Removed renderAddSection() */}
           </div>
 
           <div className="space-y-4">
@@ -1278,21 +1211,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                       {renderTodoItem(section, todo)}
                     </div>
                   ))}
-                  <input
-                    type="text"
-                    placeholder="Add a new todo..."
-                    onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === "Enter") {
-                        const input = e.currentTarget;
-                        if (input.value.trim()) {
-                          addTodo(section.id, input.value);
-                          input.value = "";
-                        }
-                      }
-                    }}
-                    className="add-todo-input"
-                  />
-                  {renderAddTodoLink(section.id)}
+                  <TodoInput sectionId={section.id} />
                 </div>
               </div>
             ))}

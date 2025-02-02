@@ -273,24 +273,35 @@ textarea.todo-input {
 .new-todo-input {
   width: 100%;
   font-family: inherit;
-  font-size: 0.925rem;
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.5;
   padding: 0.75rem 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: white;
+  background: #f9fafb;
   transition: all 0.2s ease;
   margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .new-todo-input:focus {
   outline: none;
   border-color: #4f46e5;
+  background: white;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .new-todo-input::placeholder {
   color: #9ca3af;
+  font-style: italic;
+}
+
+/* Ensure input looks like a todo item when focused */
+.new-todo-input:focus,
+.new-todo-input:not(:placeholder-shown) {
+  border-color: #e5e7eb;
+  background: white;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Offline indicator */
@@ -514,4 +525,18 @@ textarea.todo-input {
   outline: none;
   border-color: #0066cc;
   box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
+}
+
+/* Todo placeholder styling */
+.todo-placeholder {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  color: #9ca3af;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.todo-placeholder:hover {
+  background-color: #f3f4f6;
 }
