@@ -129,21 +129,34 @@
   position: relative;
 }
 
-/* Main content row */
+/* Todo main content alignment */
 .todo-main-content {
   display: flex;
   align-items: flex-start;
   width: 100%;
+  gap: 0.5rem;
 }
 
-/* Todo content wrapper */
+/* Todo content wrapper to ensure proper alignment */
 .todo-content-wrapper {
   display: flex;
   align-items: flex-start;
   flex: 1;
   min-width: 0;
-  padding: 0;
-  margin: 0;
+  gap: 0.5rem;
+}
+
+/* Todo checkbox */
+.todo-checkbox {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #d1d5db;
+  border-radius: 3px;
+  margin-top: 2px;  /* Slight adjustment to align with first line */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
 }
 
 /* Delete button */
@@ -162,19 +175,6 @@
 
 .todo-item:hover .todo-content-wrapper button {
   opacity: 1;
-}
-
-/* Todo checkbox */
-.todo-checkbox {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #d1d5db;
-  border-radius: 3px;
-  margin-right: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  flex-shrink: 0;
 }
 
 /* Timestamp container styling */
