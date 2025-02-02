@@ -1065,6 +1065,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                 )}
               </button>
             </div>
+            <h1 className="app-title">ToDo</h1>
           </div>
           
           {isUserMenuOpen && (
