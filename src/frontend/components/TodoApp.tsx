@@ -1,14 +1,14 @@
 // Import React explicitly if using JSX
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./todo-styles.css";
-import supabase, { 
-  signUp, 
-  signIn, 
-  getTodosTable, 
+import supabase, {
+  signUp,
+  signIn,
+  getTodosTable,
   getSectionsTable,
   Todo,
   Section,
-  TodoSection
+  TodoSection,
 } from "../utils/supabaseClient";
 import {
   openLocalDatabase,
@@ -20,7 +20,13 @@ import {
   deleteLocalTodo,
 } from "../../utils/localDatabase";
 import { shortenUrl } from "../utils/urlUtils";
-import { format, parseISO, isValid, parse, formatDistanceToNow } from "date-fns";
+import {
+  format,
+  parseISO,
+  isValid,
+  parse,
+  formatDistanceToNow,
+} from "date-fns";
 import {
   ArrowRightOnRectangleIcon,
   TrashIcon,
@@ -147,9 +153,11 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const fetchSections = useCallback(async () => {
     if (!user) return;
 
-    const { data: rawSections, error: sectionsError } = await getSectionsTable(user.id)
+    const { data: rawSections, error: sectionsError } = await getSectionsTable(
+      user.id
+    )
       .select("*")
-      .order('order', { ascending: true });
+      .order("order", { ascending: true });
 
     if (sectionsError) {
       console.error("Error fetching sections:", sectionsError);
@@ -158,7 +166,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     const { data: rawTodos, error: todosError } = await getTodosTable(user.id)
       .select("*")
-      .order('id', { ascending: true });
+      .order("id", { ascending: true });
 
     if (todosError) {
       console.error("Error fetching todos:", todosError);
@@ -169,12 +177,12 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     const sections = (rawSections || []) as Section[];
     const todos = (rawTodos || []) as Todo[];
 
-    const combinedData: TodoSection[] = sections.map(section => ({
+    const combinedData: TodoSection[] = sections.map((section) => ({
       id: section.id,
       title: section.title,
       order: section.order,
       user_id: section.user_id,
-      todos: todos.filter(todo => todo.section_id === section.id)
+      todos: todos.filter((todo) => todo.section_id === section.id),
     }));
 
     setSections(combinedData);
@@ -198,9 +206,11 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     let authListener: AuthListener | null = null;
 
     try {
-      authListener = supabase.auth.onAuthStateChange((event: string, session: any) => {
-        setUser(session?.user || null);
-      });
+      authListener = supabase.auth.onAuthStateChange(
+        (event: string, session: any) => {
+          setUser(session?.user || null);
+        }
+      );
     } catch (error) {
       console.error("Error setting up auth listener:", error);
     }
@@ -254,15 +264,15 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
   const addTodo = async (sectionId: number, todoText: string) => {
     if (!user) return false;
-    
+
     try {
       const { data: newTodo, error } = await getTodosTable()
-        .insert({ 
-          text: todoText, 
+        .insert({
+          text: todoText,
           section_id: sectionId,
           user_id: user.id,
           completed: false,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -304,7 +314,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     };
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && inputRef.current?.value.trim()) {
+      if (e.key === "Enter" && inputRef.current?.value.trim()) {
         void addTodo(sectionId, inputRef.current.value.trim());
         setIsEditing(false);
       }
@@ -317,10 +327,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     return (
       <div className="todo-input-container">
         {!isEditing ? (
-          <div 
-            className="todo-placeholder" 
-            onClick={handleAddTodo}
-          >
+          <div className="todo-placeholder" onClick={handleAddTodo}>
             Add a new todo...
           </div>
         ) : (
@@ -354,7 +361,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     };
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && inputRef.current?.value.trim()) {
+      if (e.key === "Enter" && inputRef.current?.value.trim()) {
         addSection(inputRef.current.value.trim());
         setIsEditing(false);
       }
@@ -367,10 +374,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     return (
       <div className="section-input-container">
         {!isEditing ? (
-          <div 
-            className="todo-placeholder" 
-            onClick={handleAddSection}
-          >
+          <div className="todo-placeholder" onClick={handleAddSection}>
             Add a new section...
           </div>
         ) : (
@@ -398,7 +402,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     try {
       const { error } = await getSectionsTable()
         .update({ title: newTitle.trim() })
-        .eq('id', sectionId);
+        .eq("id", sectionId);
 
       if (error) throw error;
 
@@ -422,7 +426,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       const newSection = {
         title: title.trim(),
         order: maxOrder + 1,
-        user_id: user.id
+        user_id: user.id,
       };
 
       const { data: insertedSection, error } = await getSectionsTable()
@@ -438,7 +442,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
         title: insertedSection.title,
         order: insertedSection.order,
         user_id: insertedSection.user_id,
-        todos: []
+        todos: [],
       };
 
       setSections((prevSections) => [...prevSections, newTodoSection]);
@@ -449,9 +453,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
   const deleteSection = async (sectionId: number) => {
     try {
-      const { error } = await getSectionsTable()
-        .delete()
-        .eq('id', sectionId);
+      const { error } = await getSectionsTable().delete().eq("id", sectionId);
 
       if (error) throw error;
 
@@ -501,9 +503,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
   const deleteTodo = async (sectionId: number, todoId: number) => {
     try {
-      const { error } = await getTodosTable()
-        .delete()
-        .eq("id", todoId);
+      const { error } = await getTodosTable().delete().eq("id", todoId);
 
       if (error) throw error;
 
@@ -563,17 +563,21 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     setEditingDateId(todoId);
   };
 
-  const finishEditingDate = async (sectionId: number, todoId: number, newDateStr: string) => {
+  const finishEditingDate = async (
+    sectionId: number,
+    todoId: number,
+    newDateStr: string
+  ) => {
     // Try to parse the date string
     const parsedDate = parse(newDateStr, "yyyy-MM-dd", new Date());
-    
+
     if (!isValid(parsedDate)) {
       alert("Please enter a valid date in the format YYYY-MM-DD");
       return;
     }
 
     const isoDate = parsedDate.toISOString();
-    
+
     const { error } = await getTodosTable()
       .update({ created_at: isoDate })
       .eq("id", todoId);
@@ -588,9 +592,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
             ? {
                 ...section,
                 todos: section.todos.map((todo) =>
-                  todo.id === todoId
-                    ? { ...todo, created_at: isoDate }
-                    : todo
+                  todo.id === todoId ? { ...todo, created_at: isoDate } : todo
                 ),
               }
             : section
@@ -600,7 +602,10 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     setEditingDateId(null);
   };
 
-  const handleAuth = async (e: React.FormEvent, isSignUp: boolean): Promise<void> => {
+  const handleAuth = async (
+    e: React.FormEvent,
+    isSignUp: boolean
+  ): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -627,7 +632,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       setUser(null);
       setIsUserPanelOpen(false);
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     }
   };
 
@@ -636,14 +641,15 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     try {
       console.log("Starting sync...");
-      const { data: sectionsData, error: sectionsError } = await getSectionsTable(user.id)
-        .select("*")
-        .order("order");
+      const { data: sectionsData, error: sectionsError } =
+        await getSectionsTable(user.id).select("*").order("order");
 
       if (sectionsError) throw sectionsError;
       console.log("Fetched sections:", sectionsData);
 
-      const { data: todosData, error: todosError } = await getTodosTable(user.id)
+      const { data: todosData, error: todosError } = await getTodosTable(
+        user.id
+      )
         .select("*")
         .order("id");
 
@@ -686,13 +692,13 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
           ...sectionsData.map((section: Section) =>
             saveTransaction.objectStore("sections").add({
               ...section,
-              last_edited: new Date().toISOString()
+              last_edited: new Date().toISOString(),
             })
           ),
           ...todosData.map((todo: Todo) =>
             saveTransaction.objectStore("todos").add({
               ...todo,
-              last_edited: new Date().toISOString()
+              last_edited: new Date().toISOString(),
             })
           ),
         ];
@@ -724,26 +730,28 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const isRecentDate = (dateStr: string) => {
     const date = parseISO(dateStr);
     const distance = formatDistanceToNow(date);
-    return distance.includes('minute') || distance.includes('hour');
+    return distance.includes("minute") || distance.includes("hour");
   };
 
   const hasRecentItems = useCallback(() => {
-    return sections.some(section =>
-      section.todos.some(todo => 
-        isRecentDate(todo.created_at) || (todo.completed && isRecentDate(todo.completed_at!))
+    return sections.some((section) =>
+      section.todos.some(
+        (todo) =>
+          isRecentDate(todo.created_at) ||
+          (todo.completed && isRecentDate(todo.completed_at!))
       )
     );
   }, [sections]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
-    
+
     if (hasRecentItems()) {
       intervalId = setInterval(() => {
-        setTimeRefresh(prev => prev + 1);
+        setTimeRefresh((prev) => prev + 1);
       }, 60000); // Update every minute
     }
-    
+
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
@@ -754,17 +762,17 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const formatTimeAgo = (dateStr: string) => {
     const date = parseISO(dateStr);
     const distance = formatDistanceToNow(date, { addSuffix: true });
-    
+
     // Replace "1 day ago" with "yesterday"
     if (distance === "1 day ago") {
       return "yesterday";
     }
-    
+
     // Remove "about" from hour-based times
     if (distance.includes("hours ago")) {
       return distance.replace("about ", "");
     }
-    
+
     return distance;
   };
 
@@ -859,8 +867,8 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                     )
                   );
                   // Auto-resize the textarea
-                  e.target.style.height = '0px';
-                  e.target.style.height = e.target.scrollHeight + 'px';
+                  e.target.style.height = "0px";
+                  e.target.style.height = e.target.scrollHeight + "px";
                   const length = e.target.value.length;
                   e.target.setSelectionRange(length, length);
                 }}
@@ -903,7 +911,9 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
             <input
               type="text"
               defaultValue={format(parseISO(todo.created_at), "yyyy-MM-dd")}
-              onBlur={(e) => finishEditingDate(section.id, todo.id, e.target.value)}
+              onBlur={(e) =>
+                finishEditingDate(section.id, todo.id, e.target.value)
+              }
               onKeyPress={(e) => {
                 if (e.key === "Enter") {
                   finishEditingDate(section.id, todo.id, e.currentTarget.value);
@@ -913,11 +923,14 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
               placeholder="YYYY-MM-DD"
             />
           ) : (
-            <span 
+            <span
               onClick={() => startEditingDate(todo.id)}
-              title={format(parseISO(todo.completed ? todo.completed_at! : todo.created_at), "MMM d, yyyy 'at' h:mm a")}
+              title={format(
+                parseISO(todo.completed ? todo.completed_at! : todo.created_at),
+                "MMM d, yyyy 'at' h:mm a"
+              )}
             >
-              {todo.completed 
+              {todo.completed
                 ? `Completed ${formatTimeAgo(todo.completed_at!)}`
                 : formatTimeAgo(todo.created_at)}
             </span>
@@ -939,7 +952,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     todoId: number,
     newText: string
   ): void => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       finishEditingTodo(sectionId, todoId, newText);
     }
@@ -949,7 +962,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     if (editingTodoId !== null && editInputRef.current) {
       const input = editInputRef.current;
       input.focus();
-      input.style.height = 'auto';
+      input.style.height = "auto";
       input.style.height = `${input.scrollHeight}px`;
       const length = input.value.length;
       input.setSelectionRange(length, length);
@@ -981,9 +994,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     try {
       await Promise.all(
         newSections.map((section, index) =>
-          getSectionsTable()
-            .update({ order: index })
-            .eq("id", section.id)
+          getSectionsTable().update({ order: index }).eq("id", section.id)
         )
       );
     } catch (error) {
@@ -994,8 +1005,8 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   };
 
   const DevBanner: React.FC = () => {
-    if (process.env.NODE_ENV !== 'development') return null;
-    
+    if (process.env.NODE_ENV !== "development") return null;
+
     return (
       <div className="bg-yellow-400 text-black text-sm py-1 px-2 text-center font-medium">
         Development Environment
@@ -1070,7 +1081,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   }> = ({ checked, onChange }) => (
     <div
       className={`relative inline-block w-10 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
-        checked ? 'bg-blue-600' : 'bg-gray-200'
+        checked ? "bg-blue-600" : "bg-gray-200"
       }`}
       onClick={onChange}
       role="switch"
@@ -1079,7 +1090,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     >
       <span
         className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
-          checked ? 'translate-x-4' : 'translate-x-0'
+          checked ? "translate-x-4" : "translate-x-0"
         }`}
       />
     </div>
@@ -1088,29 +1099,36 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   return (
     <div data-testid="todo-app" className="min-h-screen bg-gray-100">
       <DevBanner />
-      {user && (
-        <div className="absolute top-4 right-4 z-50">
-          <div className="relative">
-            <button 
-              onClick={toggleUserPanel} 
-              className="rounded-full bg-blue-400 text-white w-10 h-10 flex items-center justify-center hover:bg-blue-500 focus:outline-none"
+      {user ? (
+        <div className="app-header">
+          <div className="app-title"></div>
+          <div className="header-actions">
+            <div className="user-panel">
+              <span className="user-email">{user.email}</span>
+              <button
+                className="auth-button"
+                onClick={() => {
+                  supabase.auth.signOut();
+                  setUser(null);
+                }}
+              >
+                <ArrowRightOnRectangleIcon />
+              </button>
+            </div>
+            {/* Optional: Add other header action buttons here */}
+          </div>
+        </div>
+      ) : (
+        <div className="app-header">
+          <h1 className="app-title"></h1>
+          <div className="header-actions">
+            {/* Authentication form or buttons */}
+            <button
+              className="auth-button"
+              onClick={() => setIsUserPanelOpen(!isUserPanelOpen)}
             >
-              {user.email ? user.email[0].toUpperCase() : 'U'}
+              Login
             </button>
-            
-            {isUserPanelOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
-                <div className="text-sm font-semibold mb-2 text-gray-700">
-                  {user.email}
-                </div>
-                <button 
-                  onClick={handleSignOut}
-                  className="w-full bg-gray-100 text-gray-700 py-2 rounded hover:bg-gray-200 transition-colors"
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1141,11 +1159,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
               </button>
             </div>
           )}
-
-          {/* Header area */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-semibold text-gray-900">My Tasks</h1>
-          </div>
 
           {/* Controls line */}
           <div className="flex items-center mb-8 border-b border-gray-200 pb-2">
@@ -1191,9 +1204,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                         const newTitle = e.target.value;
                         setSections(
                           sections.map((s) =>
-                            s.id === section.id
-                              ? { ...s, title: newTitle }
-                              : s
+                            s.id === section.id ? { ...s, title: newTitle } : s
                           )
                         );
                       }}
@@ -1251,7 +1262,9 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                   {section.todos.map((todo) => (
                     <div
                       key={todo.id}
-                      className={`todo-item ${editingTodoId === todo.id ? 'editing' : ''}`}
+                      className={`todo-item ${
+                        editingTodoId === todo.id ? "editing" : ""
+                      }`}
                     >
                       {renderTodoItem(section, todo)}
                     </div>
