@@ -923,17 +923,20 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
               placeholder="YYYY-MM-DD"
             />
           ) : (
-            <span
-              onClick={() => startEditingDate(todo.id)}
-              title={format(
-                parseISO(todo.completed ? todo.completed_at! : todo.created_at),
-                "MMM d, yyyy 'at' h:mm a"
-              )}
-            >
-              {todo.completed
-                ? `Completed ${formatTimeAgo(todo.completed_at!)}`
-                : formatTimeAgo(todo.created_at)}
-            </span>
+            <div className="todo-timestamp-container">
+              <span
+                className="todo-timestamp"
+                onClick={() => startEditingDate(todo.id)}
+                title={format(
+                  parseISO(todo.completed ? todo.completed_at! : todo.created_at),
+                  "MMM d, yyyy 'at' h:mm a"
+                )}
+              >
+                {todo.completed
+                  ? `Completed ${formatTimeAgo(todo.completed_at!)}`
+                  : formatTimeAgo(todo.created_at)}
+              </span>
+            </div>
           )}
         </div>
       </div>

@@ -91,16 +91,16 @@
 
 /* Todo items */
 .todo-item {
+  display: flex;
+  flex-direction: column;
+  position: relative;
   background: #f9fafb;
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.25rem;
   border: 1px solid transparent;
   transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
   gap: 0.1rem;
-  position: relative;
 }
 
 .todo-item.editing {
@@ -111,6 +111,13 @@
 
 .todo-item:hover {
   background: #f3f4f6;
+}
+
+.todo-item-content {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
 }
 
 /* Todo item container */
@@ -170,11 +177,24 @@
   flex-shrink: 0;
 }
 
-/* Todo timestamp */
+/* Timestamp container styling */
+.todo-timestamp-container {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* Todo timestamp styling */
 .todo-timestamp {
-  font-size: 0.675rem;
+  font-size: 0.6rem;
   color: #6B7280;
-  margin-left: 2rem;
+  text-align: right;
+  opacity: 0.7;
+  padding-top: 0.1rem;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Checkbox styling */
@@ -213,17 +233,6 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.875rem;
-}
-
-.todo-item-content {
-  display: block;
-  padding: 0;
-  margin: 0;
-}
-
-.todo-link {
-  display: block;
-  margin-top: 0.1rem;
 }
 
 /* New todo input */
