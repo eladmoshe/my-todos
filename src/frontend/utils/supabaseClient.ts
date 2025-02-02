@@ -46,12 +46,12 @@ export interface TodoSection extends BaseSection {
 // Type-safe table getters with user filtering
 export const getTodosTable = (userId?: string) => {
   const table = supabase.from('todos');
-  return userId ? table.select('*').eq('user_id', userId) : table;
+  return (userId ? table.select('*').eq('user_id', userId) : table) as any;
 }
 
 export const getSectionsTable = (userId?: string) => {
   const table = supabase.from('sections');
-  return userId ? table.select('*').eq('user_id', userId) : table;
+  return (userId ? table.select('*').eq('user_id', userId) : table) as any;
 }
 
 export const signUp = async (email: string, password: string) => {

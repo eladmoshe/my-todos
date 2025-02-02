@@ -1,4 +1,4 @@
-node_modules
+node_modules/
 .env
 /build/*
 
@@ -8,10 +8,11 @@ node_modules
 .pnp.js
 
 # testing
-/coverage
+/coverage/
 
 # production
-/build
+/build/
+/public/
 
 # misc
 .DS_Store

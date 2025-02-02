@@ -8,9 +8,7 @@ import supabase, {
   getSectionsTable,
   Todo,
   Section,
-  TodoSection,
-  BaseTodo,
-  BaseSection
+  TodoSection
 } from "../utils/supabaseClient";
 import {
   openLocalDatabase,
@@ -620,11 +618,17 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
       try {
         const promises = [
-          ...sectionsData.map((section) =>
-            saveTransaction.objectStore("sections").add(section)
+          ...sectionsData.map((section: Section) =>
+            saveTransaction.objectStore("sections").add({
+              ...section,
+              last_edited: new Date().toISOString()
+            })
           ),
-          ...todosData.map((todo) =>
-            saveTransaction.objectStore("todos").add(todo)
+          ...todosData.map((todo: Todo) =>
+            saveTransaction.objectStore("todos").add({
+              ...todo,
+              last_edited: new Date().toISOString()
+            })
           ),
         ];
 
@@ -639,9 +643,9 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       }
 
       // Update state
-      const combinedData = sectionsData.map((section: any) => ({
+      const combinedData = sectionsData.map((section: Section) => ({
         ...section,
-        todos: todosData.filter((todo: any) => todo.section_id === section.id),
+        todos: todosData.filter((todo: Todo) => todo.section_id === section.id),
       }));
       console.log("Updating React state with:", combinedData);
       setSections(combinedData);
