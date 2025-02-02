@@ -337,6 +337,56 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     );
   };
 
+  const SectionInput: React.FC = () => {
+    const [isEditing, setIsEditing] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (isEditing && inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, [isEditing]);
+
+    const handleBlur = () => {
+      if (!inputRef.current?.value.trim()) {
+        setIsEditing(false);
+      }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && inputRef.current?.value.trim()) {
+        addSection(inputRef.current.value.trim());
+        setIsEditing(false);
+      }
+    };
+
+    const handleAddSection = () => {
+      setIsEditing(true);
+    };
+
+    return (
+      <div className="section-input-container">
+        {!isEditing ? (
+          <div 
+            className="todo-placeholder" 
+            onClick={handleAddSection}
+          >
+            Add a new section...
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            className="new-todo-input"
+            placeholder="Enter section name"
+            onBlur={handleBlur}
+            onKeyPress={handleKeyPress}
+          />
+        )}
+      </div>
+    );
+  };
+
   const startEditingSection = (sectionId: number) => {
     setEditingSectionId(sectionId);
   };
@@ -1128,11 +1178,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
             </div>
           </div>
 
-          {/* Add Section Button */}
-          <div className="notebook-line flex items-center mb-4">
-            {/* Removed renderAddSection() */}
-          </div>
-
           <div className="space-y-4">
             {filteredSections.map((section: TodoSection, index: number) => (
               <div key={section.id} className="todo-section">
@@ -1215,6 +1260,11 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Add Section Button */}
+          <div className="notebook-line flex items-center mb-4">
+            <SectionInput />
           </div>
         </div>
       </div>
