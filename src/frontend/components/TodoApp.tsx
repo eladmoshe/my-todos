@@ -142,6 +142,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const [completingTodoId, setCompletingTodoId] = useState<number | null>(null);
   const [newSectionTitle, setNewSectionTitle] = useState<string>("");
   const [timeRefresh, setTimeRefresh] = useState(0);
+  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
 
   const fetchSections = useCallback(async () => {
     if (!user) return;
@@ -551,12 +552,12 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error signing out:", error);
-    } else {
+    try {
+      await supabase.auth.signOut();
       setUser(null);
-      setSections([]);
+      setIsUserPanelOpen(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
@@ -1019,6 +1020,10 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     );
   };
 
+  const toggleUserPanel = () => {
+    setIsUserPanelOpen(!isUserPanelOpen);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1100,6 +1105,32 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   return (
     <div data-testid="todo-app" className="min-h-screen bg-gray-100">
       <DevBanner />
+      {user && (
+        <div className="absolute top-4 right-4 z-50">
+          <div className="relative">
+            <button 
+              onClick={toggleUserPanel} 
+              className="rounded-full bg-blue-400 text-white w-10 h-10 flex items-center justify-center hover:bg-blue-500 focus:outline-none"
+            >
+              {user.email ? user.email[0].toUpperCase() : 'U'}
+            </button>
+            
+            {isUserPanelOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white shadow-lg rounded-lg border border-gray-200 p-4">
+                <div className="text-sm font-semibold mb-2 text-gray-700">
+                  {user.email}
+                </div>
+                <button 
+                  onClick={handleSignOut}
+                  className="w-full bg-gray-100 text-gray-700 py-2 rounded hover:bg-gray-200 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
         {/* Main content container */}
         <div className="py-8 px-4 relative">
@@ -1124,13 +1155,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
               >
                 <ArrowPathIcon className="w-5 h-5 mr-1" />
                 Sync
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors duration-200"
-              >
-                <ArrowRightOnRectangleIcon className="w-5 h-5 mr-1" />
-                Sign Out
               </button>
             </div>
           )}
