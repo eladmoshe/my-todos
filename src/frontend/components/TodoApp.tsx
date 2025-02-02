@@ -326,7 +326,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     try {
       const { error } = await getSectionsTable()
-        .select()
         .update({ title: newTitle.trim() })
         .eq('id', sectionId);
 
@@ -380,7 +379,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const deleteSection = async (sectionId: number) => {
     try {
       const { error } = await getSectionsTable()
-        .select()
         .delete()
         .eq('id', sectionId);
 
@@ -401,7 +399,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     // Wait for animation to complete before updating state
     const now = new Date().toISOString();
     const { error } = await getTodosTable()
-      .select()
       .update({ completed: true, completed_at: now })
       .eq("id", todoId)
       .select()
@@ -434,7 +431,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const deleteTodo = async (sectionId: number, todoId: number) => {
     try {
       const { error } = await getTodosTable()
-        .select()
         .delete()
         .eq("id", todoId);
 
@@ -470,7 +466,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     newText: string
   ) => {
     const { error } = await getTodosTable()
-      .select()
       .update({ text: newText })
       .eq("id", todoId);
 
@@ -509,7 +504,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     const isoDate = parsedDate.toISOString();
     
     const { error } = await getTodosTable()
-      .select()
       .update({ created_at: isoDate })
       .eq("id", todoId);
 
@@ -1004,7 +998,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
       await Promise.all(
         newSections.map((section, index) =>
           getSectionsTable()
-            .select()
             .update({ order: index })
             .eq("id", section.id)
         )
