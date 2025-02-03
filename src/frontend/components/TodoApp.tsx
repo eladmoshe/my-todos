@@ -288,7 +288,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     };
 
     saveTodoToDatabase();
-  }, [user, supabase]);
+  }, [user]);
 
   const startEditingSection = (sectionId: number) => {
     setEditingSectionId(sectionId);
