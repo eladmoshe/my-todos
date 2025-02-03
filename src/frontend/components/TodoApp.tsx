@@ -46,6 +46,8 @@ import {
   ChainIcon, 
   SlackPreview 
 } from './todo/UtilityComponents';
+import { TodoInput } from './todo/TodoInput';
+import { SectionInput } from './todo/SectionInput';
 
 interface SlackPreviewProps {
   url: string;
@@ -287,170 +289,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     saveTodoToDatabase();
   }, [user, supabase]);
-
-  const TodoInput: React.FC<{ sectionId?: number }> = ({ sectionId }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-      if (isEditing && inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, [isEditing]);
-
-    const handleBlur = () => {
-      if (!inputRef.current?.value.trim()) {
-        setIsEditing(false);
-      }
-    };
-
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && inputRef.current?.value.trim()) {
-        const todoText = inputRef.current.value.trim();
-        const targetSectionId = sectionId || (sections.length > 0 ? sections[0].id : null);
-        
-        if (targetSectionId) {
-          const addTodoToSection = () => {
-            if (user) {
-              const newTodo: Todo = {
-                id: Date.now(), // Temporary client-side ID
-                text: todoText,
-                completed: false,
-                completed_at: null,
-                created_at: new Date().toISOString(),
-                section_id: targetSectionId,
-                user_id: user.id
-              };
-
-              // Optimistically update the UI
-              setSections(prevSections => 
-                prevSections.map(section => 
-                  section.id === targetSectionId 
-                    ? { ...section, todos: [...section.todos, newTodo] } 
-                    : section
-                )
-              );
-
-              // Actually save the todo to the database
-              const saveTodoToDatabase = async () => {
-                try {
-                  const { data, error } = await supabase
-                    .from('todos')
-                    .insert(newTodo)
-                    .select();
-
-                  if (error) throw error;
-
-                  // Update the todo with the server-generated ID
-                  if (data && data.length > 0) {
-                    setSections(prevSections => 
-                      prevSections.map(section => 
-                        section.id === targetSectionId 
-                          ? { 
-                              ...section, 
-                              todos: section.todos.map(todo => 
-                                todo.id === newTodo.id ? data[0] : todo
-                              ) 
-                            } 
-                          : section
-                      )
-                    );
-                  }
-                } catch (err) {
-                  console.error('Error saving todo:', err);
-                  // Revert the optimistic update if save fails
-                  setSections(prevSections => 
-                    prevSections.map(section => 
-                      section.id === targetSectionId 
-                        ? { ...section, todos: section.todos.filter(todo => todo.id !== newTodo.id) } 
-                        : section
-                    )
-                  );
-                }
-              };
-
-              saveTodoToDatabase();
-            }
-          };
-
-          addTodoToSection();
-          
-          inputRef.current.value = '';
-          setIsEditing(false);
-        }
-      }
-    };
-
-    const handleAddTodo = () => {
-      setIsEditing(true);
-    };
-
-    return (
-      <div className="todo-input-container">
-        {!isEditing ? (
-          <div className="todo-placeholder" onClick={handleAddTodo}>
-            Add a new todo...
-          </div>
-        ) : (
-          <input
-            ref={inputRef}
-            type="text"
-            className="new-todo-input"
-            placeholder="What needs to be done?"
-            onBlur={handleBlur}
-            onKeyPress={handleKeyPress}
-          />
-        )}
-      </div>
-    );
-  };
-
-  const SectionInput: React.FC = () => {
-    const [isEditing, setIsEditing] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-      if (isEditing && inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, [isEditing]);
-
-    const handleBlur = () => {
-      if (!inputRef.current?.value.trim()) {
-        setIsEditing(false);
-      }
-    };
-
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && inputRef.current?.value.trim()) {
-        addSection(inputRef.current.value.trim());
-        setIsEditing(false);
-      }
-    };
-
-    const handleAddSection = () => {
-      setIsEditing(true);
-    };
-
-    return (
-      <div className="section-input-container">
-        {!isEditing ? (
-          <div className="todo-placeholder" onClick={handleAddSection}>
-            Add a new section...
-          </div>
-        ) : (
-          <input
-            ref={inputRef}
-            type="text"
-            className="new-todo-input"
-            placeholder="Enter section name"
-            onBlur={handleBlur}
-            onKeyPress={handleKeyPress}
-          />
-        )}
-      </div>
-    );
-  };
 
   const startEditingSection = (sectionId: number) => {
     setEditingSectionId(sectionId);
@@ -1249,7 +1087,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                       {renderTodoItem(section, todo)}
                     </div>
                   ))}
-                  <TodoInput sectionId={section.id} />
                 </div>
               </div>
             ))}
@@ -1257,7 +1094,6 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
           {/* Add Section Button */}
           <div className="notebook-line flex items-center mb-4">
-            <SectionInput />
           </div>
         </div>
       </div>
