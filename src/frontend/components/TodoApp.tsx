@@ -1,5 +1,11 @@
 // Import React explicitly if using JSX
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { 
+  useState, 
+  useEffect, 
+  useRef, 
+  useCallback, 
+  useMemo 
+} from "react";
 import "./todo-styles.css";
 import supabase, {
   signUp,
@@ -19,7 +25,9 @@ import {
   deleteLocalSection,
   deleteLocalTodo,
 } from "../../utils/localDatabase";
-import { shortenUrl } from "../utils/urlUtils";
+import {
+  shortenUrl
+} from "../utils/urlUtils";
 import {
   format,
   parseISO,
@@ -27,13 +35,17 @@ import {
   parse,
   formatDistanceToNow,
 } from "date-fns";
-import {
+import { 
   ArrowRightOnRectangleIcon,
   TrashIcon,
   ChevronUpIcon,
   ChevronDownIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { 
+  ChainIcon, 
+  SlackPreview 
+} from './todo/UtilityComponents';
 
 interface SlackPreviewProps {
   url: string;
@@ -47,83 +59,31 @@ interface AuthListener {
   };
 }
 
-const ChainIcon: React.FC = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="inline-block mr-1 mb-1"
-  >
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-  </svg>
-);
-
-const SlackPreview: React.FC<SlackPreviewProps> = ({ url }) => {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchPreview = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(
-          `/api/slack-preview?url=${encodeURIComponent(url)}`
-        );
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setPreview(data.preview);
-      } catch (error) {
-        console.error("Error fetching Slack preview:", error);
-        setError(
-          error instanceof Error ? error.message : "An unknown error occurred"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPreview();
-  }, [url]);
-
-  if (isLoading) return <div>Loading preview...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!preview) return null;
-
-  return (
-    <div className="bg-white border border-gray-200 p-4 rounded-md shadow-lg max-w-md">
-      <p className="text-sm text-gray-600">{preview}</p>
-    </div>
-  );
-};
-
-const LoadingSkeleton: React.FC = () => {
-  return (
-    <div className="todo-app">
-      {[1, 2].map((section) => (
-        <div key={section} className="skeleton-section">
-          <div className="skeleton skeleton-title"></div>
-          {[1, 2, 3].map((todo) => (
-            <div key={todo} className="skeleton skeleton-todo"></div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-};
-
 interface TodoAppProps {
   basename?: string;
+}
+
+// Updated User interface to match Supabase user type
+interface User {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, any>;
+  app_metadata?: Record<string, any>;
+  created_at?: string;
+}
+
+interface TodoItemProps {
+  todo: Todo;
+  onToggleComplete: (id: number) => void;
+  onDelete: (id: number) => void;
+  onEdit: (id: number, newText: string) => void;
+}
+
+interface SectionProps {
+  section: TodoSection;
+  onAddTodo: (sectionId: number, text: string) => void;
+  onDeleteSection: (sectionId: number) => void;
+  onEditSection: (sectionId: number, newTitle: string) => void;
 }
 
 const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
@@ -132,7 +92,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editingDateId, setEditingDateId] = useState<number | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -152,39 +112,43 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const fetchSections = useCallback(async () => {
     if (!user) return;
 
-    const { data: rawSections, error: sectionsError } = await getSectionsTable(
-      user.id
-    )
-      .select("*")
-      .order("order", { ascending: true });
+    try {
+      const { data: rawSections, error: sectionsError } = await getSectionsTable(
+        user.id
+      )
+        .select("*")
+        .order("order", { ascending: true });
 
-    if (sectionsError) {
-      console.error("Error fetching sections:", sectionsError);
-      return;
+      if (sectionsError) {
+        throw new Error(sectionsError.message);
+      }
+
+      const { data: rawTodos, error: todosError } = await getTodosTable(
+        user.id
+      )
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (todosError) {
+        throw new Error(todosError.message);
+      }
+
+      const sections = (rawSections || []) as Section[];
+      const todos = (rawTodos || []) as Todo[];
+
+      const combinedData: TodoSection[] = sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        order: section.order,
+        user_id: section.user_id,
+        todos: todos.filter((todo) => todo.section_id === section.id),
+      }));
+
+      setSections(combinedData);
+    } catch (err) {
+      console.error("Error fetching sections and todos:", err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
     }
-
-    const { data: rawTodos, error: todosError } = await getTodosTable(user.id)
-      .select("*")
-      .order("id", { ascending: true });
-
-    if (todosError) {
-      console.error("Error fetching todos:", todosError);
-      return;
-    }
-
-    // Ensure we have arrays even if data is null
-    const sections = (rawSections || []) as Section[];
-    const todos = (rawTodos || []) as Todo[];
-
-    const combinedData: TodoSection[] = sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      order: section.order,
-      user_id: section.user_id,
-      todos: todos.filter((todo) => todo.section_id === section.id),
-    }));
-
-    setSections(combinedData);
   }, [user]);
 
   useEffect(() => {
@@ -261,42 +225,70 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     fetchData();
   }, [user, fetchSections]);
 
-  const addTodo = async (sectionId: number, todoText: string) => {
-    if (!user) return false;
+  const handleAddTodo = useCallback((sectionId: number, text: string) => {
+    if (!user) return;
 
-    try {
-      const { data: newTodo, error } = await getTodosTable()
-        .insert({
-          text: todoText,
-          section_id: sectionId,
-          user_id: user.id,
-          completed: false,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+    const newTodo: Todo = {
+      id: Date.now(), // Temporary client-side ID
+      text,
+      completed: false,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+      section_id: sectionId,
+      user_id: user.id
+    };
 
-      if (error) throw error;
+    // Optimistically update the UI
+    setSections(prevSections => 
+      prevSections.map(section => 
+        section.id === sectionId 
+          ? { ...section, todos: [...section.todos, newTodo] } 
+          : section
+      )
+    );
 
-      if (newTodo) {
-        setSections((prevSections) =>
-          prevSections.map((section) =>
-            section.id === sectionId
-              ? { ...section, todos: [...section.todos, newTodo] }
+    // Actually save the todo to the database
+    const saveTodoToDatabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .insert(newTodo)
+          .select();
+
+        if (error) throw error;
+
+        // Update the todo with the server-generated ID
+        if (data && data.length > 0) {
+          setSections(prevSections => 
+            prevSections.map(section => 
+              section.id === sectionId 
+                ? { 
+                    ...section, 
+                    todos: section.todos.map(todo => 
+                      todo.id === newTodo.id ? data[0] : todo
+                    ) 
+                  } 
+                : section
+            )
+          );
+        }
+      } catch (err) {
+        console.error('Error saving todo:', err);
+        // Revert the optimistic update if save fails
+        setSections(prevSections => 
+          prevSections.map(section => 
+            section.id === sectionId 
+              ? { ...section, todos: section.todos.filter(todo => todo.id !== newTodo.id) } 
               : section
           )
         );
-        await saveLocalTodo(newTodo);
-        return true;
       }
-      return false;
-    } catch (error) {
-      console.error("Error adding todo:", error);
-      return false;
-    }
-  };
+    };
 
-  const TodoInput: React.FC<{ sectionId: number }> = ({ sectionId }) => {
+    saveTodoToDatabase();
+  }, [user, supabase]);
+
+  const TodoInput: React.FC<{ sectionId?: number }> = ({ sectionId }) => {
     const [isEditing, setIsEditing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -314,8 +306,78 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && inputRef.current?.value.trim()) {
-        void addTodo(sectionId, inputRef.current.value.trim());
-        setIsEditing(false);
+        const todoText = inputRef.current.value.trim();
+        const targetSectionId = sectionId || (sections.length > 0 ? sections[0].id : null);
+        
+        if (targetSectionId) {
+          const addTodoToSection = () => {
+            if (user) {
+              const newTodo: Todo = {
+                id: Date.now(), // Temporary client-side ID
+                text: todoText,
+                completed: false,
+                completed_at: null,
+                created_at: new Date().toISOString(),
+                section_id: targetSectionId,
+                user_id: user.id
+              };
+
+              // Optimistically update the UI
+              setSections(prevSections => 
+                prevSections.map(section => 
+                  section.id === targetSectionId 
+                    ? { ...section, todos: [...section.todos, newTodo] } 
+                    : section
+                )
+              );
+
+              // Actually save the todo to the database
+              const saveTodoToDatabase = async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from('todos')
+                    .insert(newTodo)
+                    .select();
+
+                  if (error) throw error;
+
+                  // Update the todo with the server-generated ID
+                  if (data && data.length > 0) {
+                    setSections(prevSections => 
+                      prevSections.map(section => 
+                        section.id === targetSectionId 
+                          ? { 
+                              ...section, 
+                              todos: section.todos.map(todo => 
+                                todo.id === newTodo.id ? data[0] : todo
+                              ) 
+                            } 
+                          : section
+                      )
+                    );
+                  }
+                } catch (err) {
+                  console.error('Error saving todo:', err);
+                  // Revert the optimistic update if save fails
+                  setSections(prevSections => 
+                    prevSections.map(section => 
+                      section.id === targetSectionId 
+                        ? { ...section, todos: section.todos.filter(todo => todo.id !== newTodo.id) } 
+                        : section
+                    )
+                  );
+                }
+              };
+
+              saveTodoToDatabase();
+            }
+          };
+
+          addTodoToSection();
+          
+          inputRef.current.value = '';
+          setIsEditing(false);
+        }
       }
     };
 
@@ -763,7 +825,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
 
     return (
       <div
-        className={`todo-item-container ${todo.completed ? "opacity-50" : ""} ${
+        className={`todo-item-container ${todo.completed ? 'completed' : ''} ${
           isCompleting ? "completing" : ""
         }`}
       >
@@ -988,7 +1050,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSkeleton />
+        <div className="loader"></div>
       </div>
     );
   }
