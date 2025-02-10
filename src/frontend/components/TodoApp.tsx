@@ -65,15 +65,6 @@ interface TodoAppProps {
   basename?: string;
 }
 
-// Updated User interface to match Supabase user type
-interface User {
-  id: string;
-  email?: string;
-  user_metadata?: Record<string, any>;
-  app_metadata?: Record<string, any>;
-  created_at?: string;
-}
-
 interface TodoItemProps {
   todo: Todo;
   onToggleComplete: (id: number) => void;
@@ -94,7 +85,7 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editingDateId, setEditingDateId] = useState<number | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -834,6 +825,41 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
     }
   };
 
+  const addTodoToSection = async (sectionId: number, todoText: string) => {
+    if (!user || !todoText.trim()) return;
+
+    try {
+      const newTodo = {
+        text: todoText.trim(),
+        section_id: sectionId,
+        user_id: user.id,
+        completed: false,
+        created_at: new Date().toISOString(),
+      };
+
+      const { data: insertedTodo, error } = await getTodosTable()
+        .insert(newTodo)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!insertedTodo) throw new Error("No todo returned from insert");
+
+      setSections(
+        sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                todos: [...section.todos, insertedTodo],
+              }
+            : section
+        )
+      );
+    } catch (error) {
+      console.error("Error adding todo:", error);
+    }
+  };
+
   const DevBanner: React.FC = () => {
     if (process.env.NODE_ENV !== "development") return null;
 
@@ -1087,6 +1113,18 @@ const TodoApp: React.FC<TodoAppProps> = ({ basename }) => {
                       {renderTodoItem(section, todo)}
                     </div>
                   ))}
+                </div>
+
+                {/* Add Todo Input */}
+                <div className="mt-4">
+                  <TodoInput 
+                    sectionId={section.id} 
+                    sections={sections} 
+                    user={user} 
+                    supabase={supabase} 
+                    setSections={setSections}
+                    onAddTodo={(todoText) => addTodoToSection(section.id, todoText)}
+                  />
                 </div>
               </div>
             ))}

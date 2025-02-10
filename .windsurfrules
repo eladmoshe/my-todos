@@ -1,0 +1,2 @@
+After a change, check for Typescript errors and run the tests.
+Make sure to introduce the minimal change required to meet the requirement. After completing the goal, review all the code to make sure each change is required.

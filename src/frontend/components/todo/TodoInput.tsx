@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Todo, TodoSection } from '../../utils/supabaseClient';
-import { User } from '@supabase/supabase-js';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, User } from '@supabase/supabase-js';
 
 interface TodoInputProps {
   sectionId?: number;
@@ -9,6 +8,7 @@ interface TodoInputProps {
   user: User | null;
   supabase: SupabaseClient;
   setSections: React.Dispatch<React.SetStateAction<TodoSection[]>>;
+  onAddTodo?: (todoText: string) => void;
 }
 
 export const TodoInput: React.FC<TodoInputProps> = ({ 
@@ -16,7 +16,8 @@ export const TodoInput: React.FC<TodoInputProps> = ({
   sections, 
   user, 
   supabase, 
-  setSections 
+  setSections,
+  onAddTodo
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,70 +40,68 @@ export const TodoInput: React.FC<TodoInputProps> = ({
       const targetSectionId = sectionId || (sections.length > 0 ? sections[0].id : null);
       
       if (targetSectionId) {
-        const addTodoToSection = () => {
-          if (user) {
-            const newTodo: Todo = {
-              id: Date.now(), // Temporary client-side ID
-              text: todoText,
-              completed: false,
-              completed_at: null,
-              created_at: new Date().toISOString(),
-              section_id: targetSectionId,
-              user_id: user.id
-            };
+        if (onAddTodo) {
+          onAddTodo(todoText);
+        } else if (user) {
+          const newTodo: Todo = {
+            id: Date.now(), // Temporary client-side ID
+            text: todoText,
+            completed: false,
+            completed_at: null,
+            created_at: new Date().toISOString(),
+            section_id: targetSectionId,
+            user_id: user.id
+          };
 
-            // Optimistically update the UI
-            setSections(prevSections => 
-              prevSections.map(section => 
-                section.id === targetSectionId 
-                  ? { ...section, todos: [...section.todos, newTodo] } 
-                  : section
-              )
-            );
+          // Optimistically update the UI
+          setSections(prevSections => 
+            prevSections.map(section => 
+              section.id === targetSectionId 
+                ? { ...section, todos: [...section.todos, newTodo] } 
+                : section
+            )
+          );
 
-            // Actually save the todo to the database
-            const saveTodoToDatabase = async () => {
-              try {
-                const { data, error } = await supabase
-                  .from('todos')
-                  .insert(newTodo)
-                  .select();
+          // Actually save the todo to the database
+          const saveTodoToDatabase = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('todos')
+                .insert(newTodo)
+                .select();
 
-                if (error) throw error;
+              if (error) throw error;
 
-                // Update the todo with the server-generated ID
-                if (data && data.length > 0) {
-                  setSections(prevSections => 
-                    prevSections.map(section => 
-                      section.id === targetSectionId 
-                        ? { 
-                            ...section, 
-                            todos: section.todos.map(todo => 
-                              todo.id === newTodo.id ? data[0] : todo
-                            ) 
-                          } 
-                        : section
-                    )
-                  );
-                }
-              } catch (err) {
-                console.error('Error saving todo:', err);
-                // Revert the optimistic update if save fails
+              // Update the todo with the server-generated ID
+              if (data && data.length > 0) {
                 setSections(prevSections => 
                   prevSections.map(section => 
                     section.id === targetSectionId 
-                      ? { ...section, todos: section.todos.filter(todo => todo.id !== newTodo.id) } 
+                      ? { 
+                          ...section, 
+                          todos: section.todos.map(todo => 
+                            todo.id === newTodo.id ? data[0] : todo
+                          ) 
+                        } 
                       : section
                   )
                 );
               }
-            };
+            } catch (err) {
+              console.error('Error saving todo:', err);
+              // Revert the optimistic update if save fails
+              setSections(prevSections => 
+                prevSections.map(section => 
+                  section.id === targetSectionId 
+                    ? { ...section, todos: section.todos.filter(todo => todo.id !== newTodo.id) } 
+                    : section
+                )
+              );
+            }
+          };
 
-            saveTodoToDatabase();
-          }
-        };
-
-        addTodoToSection();
+          saveTodoToDatabase();
+        }
         
         if (inputRef.current) {
           inputRef.current.value = '';
